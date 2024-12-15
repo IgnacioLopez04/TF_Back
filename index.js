@@ -1,7 +1,8 @@
 import express from 'express'
-import { PORT } from './configs/config.js'
-import { patientRouter } from './routes/patient.routes.js'
-import { errorHandler } from './middlewares/errors.middleware.js'
+
+import { patientRouter } from './src/routes/patient.routes.js'
+import { errorHandler } from './src/middlewares/errors.middleware.js'
+import { PORT } from './src/configs/config.js'
 
 const app = express()
 
