@@ -5,7 +5,6 @@ export class PatientModel {
    static async getPatient() {
       try {
          const res = await pool.query('SELECT * FROM paciente');
-         console.log(res);
          if (!res || res.rowCount === 0) {
             throw new DefaultError(
                'NotFoundError',

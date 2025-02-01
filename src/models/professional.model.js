@@ -11,7 +11,7 @@ export class professionalModel {
          );
 
          especialidades.map(async (especialidad) => {
-            const { id_especialidad, matricula } = especialidad; // VER SI POR CADA ESPECIALIDAD EXISTE UNA MATRICULA
+            const { id_especialidad, matricula } = especialidad; // ! VER SI POR CADA ESPECIALIDAD EXISTE UNA MATRICULA
             const response = await pool.query(
                `INSERT INTO profesional_especialidad(id_especialidad, id_profesional, matricula) VALUES($1, $2, $3)`,
                [responseProfessional, id_especialidad, matricula],
