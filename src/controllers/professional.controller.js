@@ -8,7 +8,7 @@ export class ProfessionalController {
          const professional = await ProfessionalModel.getProfessional(
             Number(id_professional),
          );
-         res.json(professional.rows[0]);
+         res.json(professional);
       } catch (err) {
          next(err);
       }
@@ -17,7 +17,7 @@ export class ProfessionalController {
    static async getAllProfessionals(req, res, next) {
       try {
          const professionals = await ProfessionalModel.getAllProfessionals();
-         res.json(professionals.rows);
+         res.json(professionals);
       } catch (err) {
          next(err);
       }

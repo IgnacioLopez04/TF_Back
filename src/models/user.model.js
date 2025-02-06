@@ -53,6 +53,23 @@ export class UserModel {
          );
       }
    }
+   static async getUsers() {
+      try {
+         const response = await pool.query(
+            `
+               SELECT * 
+               FROM usuario
+            `,
+         );
+         return response.rows;
+      } catch (err) {
+         throw new DefaultError(
+            'DatabaseError',
+            'Error al obtener los usuarios.',
+            500,
+         );
+      }
+   }
    static async deleteUser(dni_usuario) {
       try {
          const response = await pool.query(

@@ -6,7 +6,7 @@ export class SpecialityController {
 
       try {
          const speciality = await SpecialityModel.getSpeciality(id_speciality);
-         res.json(speciality.rows[0]);
+         res.json(speciality);
       } catch (err) {
          next(err);
       }
@@ -14,7 +14,7 @@ export class SpecialityController {
    static async getSpecialities(req, res, next) {
       try {
          const specialities = await SpecialityModel.getAllSpecialities();
-         res.json(specialities.rows);
+         res.json(specialities);
       } catch (err) {
          next(err);
       }
