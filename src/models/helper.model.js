@@ -1,7 +1,7 @@
 import { pool } from '../configs/config';
 import { DefaultError } from '../errors/errors';
 
-export class helperModel {
+export class HelperModel {
    static async insertProvince({ id_provincia, nombre_provincia }) {
       try {
          await pool.query(

@@ -1,7 +1,7 @@
 import { pool } from '../configs/config.js';
 import { DefaultError } from '../errors/errors.js';
 
-export class userModel {
+export class UserModel {
    static async insertUser({
       contrasenia,
       email,

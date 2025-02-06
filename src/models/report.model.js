@@ -1,7 +1,7 @@
 import { pool } from '../configs/config';
 import { DefaultError } from '../errors/errors';
 
-export class reportModel {
+export class ReportModel {
    static async insertReport(id_profesional, dni_paciente, report) {
       try {
          const response = await pool.query(

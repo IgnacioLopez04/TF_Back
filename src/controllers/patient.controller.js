@@ -41,7 +41,7 @@ export class PatientController {
          };
          console.log(obj);
          await PatientModel.insertPatient(obj);
-         return res.sendStatus(201);
+         return res.sendStatus(201).json({ message: 'Paciente creado.' });
       } catch (err) {
          console.log(err);
          next(err);
@@ -53,6 +53,7 @@ export class PatientController {
 
       try {
          await PatientModel.deletePatient(Number(id_patient));
+         res.sendStatus(200).json({ message: 'Paciente eliminado.' });
       } catch (error) {
          next(err);
       }

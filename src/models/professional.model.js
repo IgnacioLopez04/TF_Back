@@ -1,8 +1,9 @@
 import { pool } from '../configs/config';
 import { DefaultError } from '../errors/errors';
 
-export class professionalModel {
-   static async insertProfessional({ id_usuario, especialidades }) {
+export class ProfessionalModel {
+   //* Professional
+   static async insertProfessional(id_usuario, especialidades) {
       //Especialidades = []
       try {
          const responseProfessional = await pool.query(
@@ -144,6 +145,7 @@ export class professionalModel {
          );
       }
    }
+   //* Speciality
    static async insertSpeciality(description) {
       try {
          const response = await pool.query(
