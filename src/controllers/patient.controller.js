@@ -47,4 +47,14 @@ export class PatientController {
          next(err);
       }
    }
+
+   static async deletePatient(req, res, next) {
+      const { id_patient } = req.params;
+
+      try {
+         await PatientModel.deletePatient(Number(id_patient));
+      } catch (error) {
+         next(err);
+      }
+   }
 }
