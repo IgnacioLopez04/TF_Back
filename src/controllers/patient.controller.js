@@ -29,7 +29,7 @@ export class PatientController {
          const id = 45057379;
          const { data } = await getPatientApi(id);
 
-         // dni_paciente, nombre_paciente, apellido_paciente, fecha_nacimiento, id_provinicia, telefono
+         //* dni_paciente, nombre_paciente, apellido_paciente, fecha_nacimiento, id_provinicia, telefono
          const obj = {
             dni_paciente: data.id,
             nombre_paciente:

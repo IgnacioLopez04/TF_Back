@@ -3,7 +3,7 @@ import { DefaultError } from '../errors/errors';
 
 export class professionalModel {
    static async insertProfessional({ id_usuario, especialidades }) {
-      //Especialidades = []
+      //* Especialidades = []
       try {
          const responseProfessional = await pool.query(
             ` INSERT INTO profesional(id_usuario) VALUES($1) RETURNING *`,
@@ -11,7 +11,7 @@ export class professionalModel {
          );
 
          especialidades.map(async (especialidad) => {
-            const { id_especialidad, matricula } = especialidad; // VER SI POR CADA ESPECIALIDAD EXISTE UNA MATRICULA
+            const { id_especialidad, matricula } = especialidad; //! VER SI POR CADA ESPECIALIDAD EXISTE UNA MATRICULA
             const response = await pool.query(
                `INSERT INTO profesional_especialidad(id_especialidad, id_profesional, matricula) VALUES($1, $2, $3)`,
                [responseProfessional, id_especialidad, matricula],
@@ -25,8 +25,15 @@ export class professionalModel {
          );
       }
    }
-   static async getProfessional() {
+   static async getProfessional(id_usuario) {
       try {
+         const professionalResponse = await pool.query(
+            'SELECT * FROM get_professioal_and_specialities($1)',
+            [id_usuario],
+         );
+         const professional = professionalResponse.rows;
+
+         // TODO: ver que devuelve este llamado para poder buscar los nombre de las especialidades y las matriculas a las mismas.
       } catch (err) {
          throw new DefaultError(
             'DatabaseError',
