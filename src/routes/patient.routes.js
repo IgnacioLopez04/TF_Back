@@ -1,8 +1,12 @@
 import { Router } from 'express';
 import { PatientController } from '../controllers/patient.controller.js';
 
-export const patientRouter = Router();
+const router = Router();
 
-patientRouter.get('/', PatientController.getPatient);
-// patientRouter.get('/', PatientController.getPatientCom)
-patientRouter.post('/create', PatientController.postPatient);
+// ! localhost:3000/api/patient
+
+router.get('/', PatientController.getPatient);
+// router.get('/', PatientController.getPatientCom)
+router.post('/create', PatientController.postPatient);
+
+export { router };
