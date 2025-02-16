@@ -17,12 +17,27 @@ export class UserController {
          next(err);
       }
    }
+   static async getActiveUsers(req, res, next) {
+      try {
+         const users = await UserModel.getActiveUsers();
+         res.json(users);
+      } catch (err) {
+         next(err);
+      }
+   }
    static async insertUser(req, res, next) {
       const { user } = req.body;
 
       try {
          const exist = await UserModel.getUser(user.dni_usuario);
          if (exist) {
+            if (exist.inactivo) {
+               try {
+                  await UserModel.activeUser(exist.dni_usuario);
+               } catch (err) {
+                  next(err);
+               }
+            }
             return res.json(exist);
          }
       } catch (err) {
@@ -37,9 +52,9 @@ export class UserController {
       }
    }
    static async deleteUser(req, res, next) {
-      const { id_user } = req.params;
+      const { dni } = req.params;
       try {
-         await UserModel.deleteUser(Number(id_user));
+         await UserModel.deleteUser(Number(dni));
          res.status(200).json({ message: 'Usuario eliminado.' });
       } catch (err) {
          next(err);

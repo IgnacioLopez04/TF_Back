@@ -27,7 +27,6 @@ export class UserModel {
             ],
          );
       } catch (err) {
-         console.log(err);
          throw new DefaultError(
             'DatabaseError',
             'Error al crear el usuario.',
@@ -71,12 +70,49 @@ export class UserModel {
          );
       }
    }
+   static async getActiveUsers() {
+      try {
+         const response = await pool.query(
+            `
+               SELECT * 
+               FROM usuario
+               WHERE inactivo = false
+            `,
+         );
+         return response.rows;
+      } catch (err) {
+         console.log(err);
+         throw new DefaultError(
+            'DatabaseError',
+            'Error al obtener los usuarios.',
+            500,
+         );
+      }
+   }
    static async deleteUser(dni_usuario) {
       try {
          const response = await pool.query(
             `
               UPDATE usuario
               SET inactivo=true
+              WHERE dni_usuario=$1
+            `,
+            [dni_usuario],
+         );
+      } catch (err) {
+         throw new DefaultError(
+            'DatabaseError',
+            'Error al eliminar el usuario.',
+            500,
+         );
+      }
+   }
+   static async activeUser(dni_usuario) {
+      try {
+         const response = await pool.query(
+            `
+              UPDATE usuario
+              SET inactivo=false
               WHERE dni_usuario=$1
             `,
             [dni_usuario],
