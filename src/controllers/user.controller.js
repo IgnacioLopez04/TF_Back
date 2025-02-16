@@ -1,9 +1,9 @@
-import { UserModel } from '../models/user.model';
+import { UserModel } from '../models/user.model.js';
 export class UserController {
    static async getUser(req, res, next) {
-      const { id_user } = req.params;
+      const { dni_user } = req.params;
       try {
-         const user = await UserModel.getUser(id_user);
+         const user = await UserModel.getUser(dni_user);
          res.json(user);
       } catch (err) {
          next(err);
@@ -19,9 +19,19 @@ export class UserController {
    }
    static async insertUser(req, res, next) {
       const { user } = req.body;
+
+      try {
+         const exist = await UserModel.getUser(user.dni_usuario);
+         if (exist) {
+            return res.json(exist);
+         }
+      } catch (err) {
+         next(err);
+      }
+
       try {
          await UserModel.insertUser(user);
-         res.senStatus(201).json({ message: 'Usuario creado.' });
+         res.sendStatus(201).json({ message: 'Usuario creado.' });
       } catch (err) {
          next(err);
       }

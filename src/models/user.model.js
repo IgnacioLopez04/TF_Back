@@ -13,7 +13,7 @@ export class UserModel {
    }) {
       try {
          const response = await pool.query(
-            ` INSERT INTO usuario(contrasenia, email, dni_usuario, nombre_usuario, apellido_usuario, fecha_nacimiento, id_tipo_usuario) 
+            ` INSERT INTO usuario(contrasenia, email, dni_usuario, nombre, apellido, fecha_nacimiento, id_tipo_usuario) 
               VALUES($1, $2, $3, $4, $5, $6,$7)
             `,
             [
@@ -27,6 +27,7 @@ export class UserModel {
             ],
          );
       } catch (err) {
+         console.log(err);
          throw new DefaultError(
             'DatabaseError',
             'Error al crear el usuario.',
