@@ -41,9 +41,20 @@ export class PatientController {
          };
          console.log(obj);
          await PatientModel.insertPatient(obj);
-         return res.sendStatus(201);
+         return res.sendStatus(201).json({ message: 'Paciente creado.' });
       } catch (err) {
          console.log(err);
+         next(err);
+      }
+   }
+
+   static async deletePatient(req, res, next) {
+      const { id_patient } = req.params;
+
+      try {
+         await PatientModel.deletePatient(Number(id_patient));
+         res.sendStatus(200).json({ message: 'Paciente eliminado.' });
+      } catch (error) {
          next(err);
       }
    }

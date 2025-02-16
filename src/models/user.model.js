@@ -1,7 +1,7 @@
 import { pool } from '../configs/config.js';
 import { DefaultError } from '../errors/errors.js';
 
-export class userModel {
+export class UserModel {
    static async insertUser({
       contrasenia,
       email,
@@ -49,6 +49,23 @@ export class userModel {
          throw new DefaultError(
             'DatabaseError',
             'Error al obtener el usuario.',
+            500,
+         );
+      }
+   }
+   static async getUsers() {
+      try {
+         const response = await pool.query(
+            `
+               SELECT * 
+               FROM usuario
+            `,
+         );
+         return response.rows;
+      } catch (err) {
+         throw new DefaultError(
+            'DatabaseError',
+            'Error al obtener los usuarios.',
             500,
          );
       }
