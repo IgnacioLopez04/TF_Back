@@ -1,9 +1,9 @@
 import { UserModel } from '../models/user.model.js';
 export class UserController {
    static async getUser(req, res, next) {
-      const { dni_user } = req.params;
+      const { dni } = req.params;
       try {
-         const user = await UserModel.getUser(dni_user);
+         const user = await UserModel.getUser(dni);
          res.json(user);
       } catch (err) {
          next(err);
@@ -31,7 +31,7 @@ export class UserController {
 
       try {
          await UserModel.insertUser(user);
-         res.sendStatus(201).json({ message: 'Usuario creado.' });
+         res.status(201).json({ message: 'Usuario creado.' });
       } catch (err) {
          next(err);
       }
@@ -40,7 +40,7 @@ export class UserController {
       const { id_user } = req.params;
       try {
          await UserModel.deleteUser(Number(id_user));
-         res.sendStatus(200).json({ message: 'Usuario eliminado.' });
+         res.status(200).json({ message: 'Usuario eliminado.' });
       } catch (err) {
          next(err);
       }
