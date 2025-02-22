@@ -7,28 +7,20 @@ export class PatientController {
          const result = await PatientModel.getPatient();
          return res.json(result);
       } catch (err) {
-         res.status(500);
          next(err);
       }
    }
-
-   // static async getPatientCom(req, res, next) {
-   //   try {
-   //     const { id } = req.body
-   //     const result = await getPatientApi(id)
-   //     return res.json(result.data)
-   //   } catch (err) {
-   //     console.log(err)
-   //     res.status(500)
-   //     next(err)
-   //   }
-   // }
-
+   static async getPatients(req, res, next) {
+      try {
+         const patients = await PatientModel.getPatients();
+         return res.json(patients);
+      } catch (err) {
+         next(err);
+      }
+   }
    static async postPatient(req, res, next) {
       try {
-         const id = 45057379;
-         const { data } = await getPatientApi(id);
-
+         const { data } = req.body;
          //* dni_paciente, nombre_paciente, apellido_paciente, fecha_nacimiento, id_provinicia, telefono
          const obj = {
             dni_paciente: data.id,
@@ -36,25 +28,36 @@ export class PatientController {
                data.name[0].given[0] + ' ' + data.name[0].given[1],
             apellido_paciente: data.name[0].family,
             fecha_nacimiento: data.birthDate,
-            id_provinicia: 1,
             telefono: parseInt(data.telecom[0].value.replace(/-/g, ''), 10),
          };
-         console.log(obj);
          await PatientModel.insertPatient(obj);
-         return res.sendStatus(201).json({ message: 'Paciente creado.' });
+         return res.status(201).json({ message: 'Paciente creado.' });
       } catch (err) {
-         console.log(err);
          next(err);
       }
    }
-
    static async deletePatient(req, res, next) {
-      const { id_patient } = req.params;
+      const { dni_paciente } = req.params;
 
       try {
-         await PatientModel.deletePatient(Number(id_patient));
-         res.sendStatus(200).json({ message: 'Paciente eliminado.' });
+         const patient = await PatientModel.getPatient(dni_paciente);
+         if (!patient)
+            return res.status(404).json({ message: 'Paciente no encontrado.' });
+
+         await PatientModel.deletePatient(Number(dni_paciente));
+         return res.status(200).json({ message: 'Paciente eliminado.' });
       } catch (error) {
+         next(err);
+      }
+   }
+   static async updatePatient(req, res, next) {
+      //! data = dni_paciente, nombre_paciente, apellido_paciente, fecha_nacimiento, id_codigo_postal, id_barrio, telefono, dni_paciente_viejo
+      const { data } = req.body;
+
+      try {
+         await PatientModel.updatePatient(dni_paciente);
+         return res.status(200).json({ message: 'Paciente actualizados.' });
+      } catch (err) {
          next(err);
       }
    }
