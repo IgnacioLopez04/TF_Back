@@ -1,4 +1,3 @@
-import { getPatientApi } from '../apis/fhirCommunity.js';
 import { PatientModel } from '../models/patient.model.js';
 
 export class PatientController {
