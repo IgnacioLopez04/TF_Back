@@ -45,17 +45,32 @@ export class FileModel {
       path,
       nombre,
       tipo_archivo,
+      fileKey,
    ) {
       try {
          await pool.query(
-            `INSERT INTO documento (dni_paciente, id_usuario, path, nombre, tipo_archivo) VALUES ($1, $2, $3, $4, $5)`,
-            [dni_paciente, id_usuario, path, nombre, tipo_archivo],
+            `INSERT INTO documento (dni_paciente, id_usuario, path, nombre, tipo_archivo, key) VALUES ($1, $2, $3, $4, $5, $6)`,
+            [dni_paciente, id_usuario, path, nombre, tipo_archivo, fileKey],
          );
       } catch (err) {
-         console.log(err);
          throw new DefaultError(
             'DataBaseError',
             'Error al insertar los documentos.',
+            500,
+         );
+      }
+   }
+   static async getFiles(dni_paciente, tipo_archivo) {
+      try {
+         const files = await pool.query(
+            `SELECT * FROM documento WHERE dni_paciente=$1 AND tipo_archivo=$2`,
+            [dni_paciente, tipo_archivo],
+         );
+         return files.rows;
+      } catch (err) {
+         throw new DefaultError(
+            'DefaultBaseError',
+            'Error al recuperar los documentos.',
             500,
          );
       }

@@ -1,12 +1,13 @@
-import { PutObjectCommand } from '@aws-sdk/client-s3';
+import { GetObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3';
 import { AWS_REGION, AWS_S3_BUCKET_NAME } from '../configs/config.js';
 import s3 from '../configs/s3.js';
 import { FileModel } from '../models/file.model.js';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
 export class FileControlller {
    static async uploadFile(req, res, next) {
       try {
-         const { id_usuario, dni_paciente } = req.body;
+         const { userId, patientDni } = req.body;
          const { files } = req;
 
          if (!files) {
@@ -35,7 +36,7 @@ export class FileControlller {
 
          await Promise.all(
             filesArray.map(async (file) => {
-               const fileKey = `uploads/${dni_paciente}/${Date.now()}_${
+               const fileKey = `uploads/${patientDni}/${Date.now()}_${
                   file.name
                }`; // nombre único
 
@@ -55,18 +56,47 @@ export class FileControlller {
 
                // Guarda la ruta (fileUrl) en la base de datos
                await FileModel.insertFile(
-                  dni_paciente,
-                  id_usuario,
+                  patientDni,
+                  userId,
                   fileUrl,
                   file.name,
                   file.mimetype,
+                  fileKey,
                );
             }),
          );
 
          return res.status(201).end();
       } catch (err) {
-         console.log(err);
+         next(err);
+      }
+   }
+   static async getFiles(req, res, next) {
+      try {
+         const { patientDni, fileType } = req.query;
+         const files = await FileModel.getFiles(patientDni, fileType);
+
+         const signedFiles = await Promise.all(
+            files.map(async (file) => {
+               const command = new GetObjectCommand({
+                  Bucket: AWS_S3_BUCKET_NAME,
+                  Key: file.key,
+               });
+
+               const url = await getSignedUrl(s3, command, {
+                  expiresIn: 60 * 10, //* 10 minutos
+               });
+
+               return {
+                  name: file.nombre,
+                  type: file.tipo_archivo,
+                  url,
+               };
+            }),
+         );
+
+         return res.json(signedFiles);
+      } catch (err) {
          next(err);
       }
    }
