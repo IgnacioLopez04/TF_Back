@@ -3,11 +3,12 @@ import { AWS_REGION, AWS_S3_BUCKET_NAME } from '../configs/config.js';
 import s3 from '../configs/s3.js';
 import { FileModel } from '../models/file.model.js';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import { ReportModel } from '../models/report.model.js';
 
 export class FileControlller {
    static async uploadFile(req, res, next) {
       try {
-         const { userId, patientDni } = req.body;
+         const { userId, patientDni, reportId } = req.body;
          const { files } = req;
 
          if (!files) {
@@ -55,7 +56,7 @@ export class FileControlller {
                const fileUrl = `https://${AWS_S3_BUCKET_NAME}.s3.${AWS_REGION}.amazonaws.com/${fileKey}`;
 
                // Guarda la ruta (fileUrl) en la base de datos
-               await FileModel.insertFile(
+               const fileId = await FileModel.insertFile(
                   patientDni,
                   userId,
                   fileUrl,
@@ -63,6 +64,9 @@ export class FileControlller {
                   file.mimetype,
                   fileKey,
                );
+               if (reportId) {
+                  await ReportModel.addFileReport(reportId, fileId);
+               }
             }),
          );
 

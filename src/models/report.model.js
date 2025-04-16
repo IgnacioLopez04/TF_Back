@@ -1,17 +1,33 @@
-import { pool } from '../configs/config';
-import { DefaultError } from '../errors/errors';
+import { pool } from '../configs/config.js';
+import { DefaultError } from '../errors/errors.js';
 
 export class ReportModel {
-   static async insertReport(id_profesional, dni_paciente, report) {
+   static async insertReport(
+      id_usuario,
+      dni_paciente,
+      reporte,
+      id_tipo_informe,
+      titulo,
+      id_especialidad,
+   ) {
       try {
          const response = await pool.query(
             `
-               INSERT INTO informe(id_profesional, dni_paciente, reporte)
-               VALUES($1,$2,$3)
+               INSERT INTO informe(id_usuario, dni_paciente, reporte, id_especialidad, titulo, id_tipo_informe)
+               VALUES($1,$2,$3,$4,$5,$6) RETURNING id_informe
             `,
-            [id_profesional, dni_paciente, report],
+            [
+               id_usuario,
+               dni_paciente,
+               reporte,
+               id_especialidad,
+               titulo,
+               id_tipo_informe,
+            ],
          );
+         return response.rows[0].id_informe;
       } catch (error) {
+         console.log(error);
          throw new DefaultError(
             'DatabaseError',
             'Error al crear el informe.',
@@ -108,6 +124,20 @@ export class ReportModel {
                500,
             );
          }
+      }
+   }
+   static async addFileReport(id_informe, id_documento) {
+      try {
+         await pool.query(
+            'INSERT INTO informe_documento(id_documento, id_informe) VALUES($1,$2)',
+            [id_documento, id_informe],
+         );
+      } catch (err) {
+         throw new DefaultError(
+            'DatabaseError',
+            'Error al agregar el documento al informe',
+            500,
+         );
       }
    }
 }

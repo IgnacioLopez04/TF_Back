@@ -48,10 +48,11 @@ export class FileModel {
       fileKey,
    ) {
       try {
-         await pool.query(
-            `INSERT INTO documento (dni_paciente, id_usuario, path, nombre, tipo_archivo, key) VALUES ($1, $2, $3, $4, $5, $6)`,
+         const file = await pool.query(
+            `INSERT INTO documento (dni_paciente, id_usuario, path, nombre, tipo_archivo, key) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id_documento`,
             [dni_paciente, id_usuario, path, nombre, tipo_archivo, fileKey],
          );
+         return file.rows[0].id_documento;
       } catch (err) {
          throw new DefaultError(
             'DataBaseError',
