@@ -27,7 +27,6 @@ export class ReportModel {
          );
          return response.rows[0].id_informe;
       } catch (error) {
-         console.log(error);
          throw new DefaultError(
             'DatabaseError',
             'Error al crear el informe.',
@@ -37,7 +36,7 @@ export class ReportModel {
    }
    static async getReport(id_informe) {
       try {
-         const report = pool.query(
+         const report = await pool.query(
             `SELECT * FROM informe WHERE id_informe = $1`,
             [id_informe],
          );
@@ -50,9 +49,12 @@ export class ReportModel {
          );
       }
    }
-   static async getReport() {
+   static async getReports(dni_paciente) {
       try {
-         const report = await pool.query(`SELECT * FROM informe`);
+         const report = await pool.query(
+            `SELECT * FROM informe WHERE dni_paciente = $1`,
+            [dni_paciente],
+         );
          return report.rows;
       } catch (error) {
          throw new DefaultError(
@@ -62,7 +64,7 @@ export class ReportModel {
          );
       }
    }
-   static async insertAnnex(id_informe, id_profesional, report) {
+   static async insertAnnex(id_informe, id_usuario, text) {
       try {
          const report = await pool.query(
             `SELECT * FROM informe WHERE id_informe=$1`,
@@ -78,11 +80,12 @@ export class ReportModel {
 
          const response = await pool.query(
             `
-               INSERT INTO anexo(id_informe, id_profesional, reporte)
+               INSERT INTO anexo(id_informe, id_usuario, reporte)
                VALUES($1,$2,$3)
             `,
-            [id_informe, id_profesional, report],
+            [id_informe, id_usuario, text],
          );
+         return;
       } catch (error) {
          if (error.statusCode === 404) {
             return error;
