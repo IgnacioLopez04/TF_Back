@@ -22,5 +22,7 @@ export const {
    AWS_SECRET_ACCESS_KEY = process.env.AWS_SECRET_ACCESS_KEY,
    AWS_REGION = process.env.AWS_REGION,
    AWS_S3_BUCKET_NAME = process.env.AWS_S3_BUCKET_NAME,
-   SECRET_KEY = proccess.env.SECRET_KEY,
+   SECRET_KEY = process.env.SECRET_KEY,
+   GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET,
+   GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID,
 } = process.env;

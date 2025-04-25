@@ -3,7 +3,6 @@ import { DefaultError } from '../errors/errors.js';
 
 export class UserModel {
    static async insertUser({
-      contrasenia,
       email,
       dni_usuario,
       nombre_usuario,
@@ -13,11 +12,10 @@ export class UserModel {
    }) {
       try {
          const response = await pool.query(
-            ` INSERT INTO usuario(contrasenia, email, dni_usuario, nombre, apellido, fecha_nacimiento, id_tipo_usuario) 
+            ` INSERT INTO usuario(email, dni_usuario, nombre, apellido, fecha_nacimiento, id_tipo_usuario) 
               VALUES($1, $2, $3, $4, $5, $6,$7)
             `,
             [
-               contrasenia,
                email,
                dni_usuario,
                nombre_usuario,

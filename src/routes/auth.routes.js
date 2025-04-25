@@ -1,9 +1,9 @@
 import { Router } from 'express';
+import { AuthController } from '../controllers/auth.controller.js';
 
 const router = Router();
 
 router.post('/login', AuthController.login);
-router.post('/reset', AuthController.resetPassword);
 
 /*
  * La idea es realizar un login, reset password.
