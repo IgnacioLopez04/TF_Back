@@ -1,4 +1,5 @@
 import express from 'express';
+import cors from 'cors';
 import fileUpload from 'express-fileupload';
 import { errorHandler } from './src/middlewares/errors.middleware.js';
 import { PORT } from './src/configs/config.js';
@@ -6,6 +7,7 @@ import { router } from './src/routes/index.routes.js';
 
 const app = express();
 
+app.use(cors({ origin: 'http://localhost:5173' }));
 app.use(
    fileUpload({
       useTempFiles: false,

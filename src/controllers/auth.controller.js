@@ -1,10 +1,12 @@
 import { verifyGoogleToken } from '../utils/oauth.js';
+import { AuthModel } from '../models/auth.model.js';
+import { createToken } from '../utils/token.js';
 
 export class AuthController {
    static async login(req, res, next) {
-      const { idToken } = req.body;
+      const { credential } = req.body;
       try {
-         const googleUser = await verifyGoogleToken(idToken);
+         const googleUser = await verifyGoogleToken(credential);
 
          const user = await AuthModel.login(googleUser.email);
          if (!user) {
