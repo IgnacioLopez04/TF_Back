@@ -1,11 +1,11 @@
 import { Router } from 'express';
 import { AuthController } from '../controllers/auth.controller.js';
 
-const router = Router();
+const authRouter = Router();
 
 //! http://localhost:3000/api/auth/
 
-router.post('/login', AuthController.login);
+authRouter.post('/login', AuthController.login);
 
 /*
  * La idea es realizar un login, reset password.
@@ -15,4 +15,4 @@ router.post('/login', AuthController.login);
  * Para iniciar sesion por primera vez, tendra que reseater la password, cada 6 meses tendra que cambiar la password.
  */
 
-export { router };
+export { authRouter };

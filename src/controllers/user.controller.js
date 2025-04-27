@@ -51,11 +51,29 @@ export class UserController {
          next(err);
       }
    }
-   static async deleteUser(req, res, next) {
-      const { dni } = req.params;
+   static async updateExpiredAt(req, res, next) {
+      const { userDni } = req.body;
       try {
-         await UserModel.deleteUser(Number(dni));
-         res.status(200).json({ message: 'Usuario eliminado.' });
+         await UserModel.updateExpiredAt(userDni);
+         return res.status(200).send('Fecha de expiracion actualizada.');
+      } catch (err) {
+         next(err);
+      }
+   }
+   static async blockUser(req, res, next) {
+      const { userDni } = req.params;
+      try {
+         await UserModel.blockUser(userDni);
+         return res.status(200).send('Usuario bloqueado.');
+      } catch (err) {
+         next(err);
+      }
+   }
+   static async activateUser(req, res, next) {
+      const { userDni } = req.body;
+      try {
+         await UserModel.activateUser(userDni);
+         return res.status(200).send('Usuario activado.');
       } catch (err) {
          next(err);
       }

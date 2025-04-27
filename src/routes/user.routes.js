@@ -9,6 +9,8 @@ router.post('/create', UserController.insertUser);
 router.get('/AllActives', UserController.getActiveUsers);
 router.get('/:dni', UserController.getUser);
 router.get('/', UserController.getUsers);
-router.delete('/:dni', UserController.deleteUser);
+router.delete('/:dni', UserController.blockUser);
+router.put('/expiration', UserController.updateExpiredAt);
+router.put('/activate', UserController.activateUser);
 
 export { router };

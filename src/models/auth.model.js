@@ -8,7 +8,7 @@ export class AuthModel {
             `
                SELECT id_usuario, email, id_tipo_usuario, nombre, apellido 
                FROM usuario 
-               WHERE email=$1 AND inactivo = false
+               WHERE email=$1 AND inactivo = false AND expired_at > NOW()
        `,
             [email],
          );

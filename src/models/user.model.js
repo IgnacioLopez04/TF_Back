@@ -79,7 +79,6 @@ export class UserModel {
          );
          return response.rows;
       } catch (err) {
-         console.log(err);
          throw new DefaultError(
             'DatabaseError',
             'Error al obtener los usuarios.',
@@ -87,38 +86,60 @@ export class UserModel {
          );
       }
    }
-   static async deleteUser(dni_usuario) {
+   static async updateExpiredAt(dni_usuario) {
       try {
-         const response = await pool.query(
+         await pool.query(
             `
-              UPDATE usuario
-              SET inactivo=true
-              WHERE dni_usuario=$1
+               UPDATE usuario
+               SET expired_at = NOW() + INTERVAL '180 days'
+               WHERE dni_usuario = $1
             `,
             [dni_usuario],
          );
       } catch (err) {
          throw new DefaultError(
             'DatabaseError',
-            'Error al eliminar el usuario.',
+            'Error al actualizar la fecha de expiracion del usuario.',
             500,
          );
       }
    }
-   static async activeUser(dni_usuario) {
+   static async blockUser(dni_usuario) {
       try {
-         const response = await pool.query(
+         await pool.query(
             `
-              UPDATE usuario
-              SET inactivo=false
-              WHERE dni_usuario=$1
+               UPDATE usuario
+               SET inactivo = true
+               WHERE dni_usuario = $1
             `,
             [dni_usuario],
          );
       } catch (err) {
          throw new DefaultError(
             'DatabaseError',
-            'Error al eliminar el usuario.',
+            'Error al bloquear el usuario.',
+            500,
+         );
+      }
+   }
+   static async activateUser(dni_usuario) {
+      /**
+       * Se activa el usuario y se le da una fecha de expiracion de 7 dias, para que el usuario pueda volver a logearse.
+       * Si el usuario no se logea en 7 dias, se le bloquea la cuenta.
+       */
+      try {
+         await pool.query(
+            `
+               UPDATE usuario
+               SET inactivo = false, expired_at = NOW() + INTERVAL '7 day'
+               WHERE dni_usuario = $1
+            `,
+            [dni_usuario],
+         );
+      } catch (err) {
+         throw new DefaultError(
+            'DatabaseError',
+            'Error al activar el usuario.',
             500,
          );
       }
