@@ -10,6 +10,10 @@ import { validateToken } from './src/utils/token.js';
 const app = express();
 
 app.use(cors({ origin: 'http://localhost:5173' }));
+app.use((req, res, next) => {
+   console.log('Request URL:', req.url);
+   next();
+});
 app.use(
    fileUpload({
       useTempFiles: false,

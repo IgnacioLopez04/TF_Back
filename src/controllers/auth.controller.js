@@ -8,7 +8,6 @@ export class AuthController {
       const { credential } = req.body;
       try {
          const googleUser = await verifyGoogleToken(credential);
-
          const user = await AuthModel.login(googleUser.email);
          if (!user) {
             return res
@@ -17,8 +16,13 @@ export class AuthController {
          }
          const access_token = await createToken(user);
          await UserModel.updateExpiredAt(user.id_usuario);
+
+         res.cookie('access_token', access_token, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'none',
+         });
          return res.json({
-            access_token,
             user,
          });
       } catch (err) {
