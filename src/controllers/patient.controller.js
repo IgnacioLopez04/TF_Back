@@ -2,8 +2,11 @@ import { PatientModel } from '../models/patient.model.js';
 
 export class PatientController {
    static async getPatient(req, res, next) {
+      const { dni_paciente } = req.params;
+      if (!dni_paciente)
+         return res.status(400).json({ message: 'DNI no proporcionado.' });
       try {
-         const result = await PatientModel.getPatient();
+         const result = await PatientModel.getPatient(dni_paciente);
          return res.json(result);
       } catch (err) {
          next(err);
@@ -19,7 +22,7 @@ export class PatientController {
    }
    static async postPatient(req, res, next) {
       try {
-         const { data } = req.body;
+         const data = req.body;
          //* dni_paciente, nombre_paciente, apellido_paciente, fecha_nacimiento, id_provinicia, telefono
          const obj = {
             dni_paciente: data.id,
