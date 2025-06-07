@@ -1,4 +1,4 @@
-import { EHRModel } from '../models/ehr.model';
+import { EHRModel } from '../models/ehr.model.js';
 
 export class EHRController {
   static hcFisiatric = async (req, res, next) => {

@@ -1,5 +1,5 @@
-import { pool } from '../configs/config';
-import { DefaultError } from '../errors/errors';
+import { pool } from '../configs/config.js';
+import { DefaultError } from '../errors/errors.js';
 
 export class EHRModel {
   static async getEHRId(ehrId) {
