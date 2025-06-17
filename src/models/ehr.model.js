@@ -1,5 +1,5 @@
 import { pool } from '../configs/config.js';
-import { DefaultError } from '../errors/errors.js';
+import { InternalServerError, NotFoundError } from '../errors/errors.js';
 
 export class EHRModel {
   static async getEHRId(ehrId) {
@@ -10,7 +10,7 @@ export class EHRModel {
       const { rows } = await pool.query(query, values);
       return rows[0];
     } catch (err) {
-      throw new DefaultError('DatabaseError', 'Error al obtener EHR', 500);
+      throw new InternalServerError('Error al obtener EHR');
     }
   }
   static async getEHR(ehrId) {
@@ -23,15 +23,11 @@ export class EHRModel {
         [ehrId],
       );
       if (response.rows.length === 0) {
-        throw new DefaultError(
-          'NotFoundError',
-          'Historia clinica no encontrada',
-          404,
-        );
+        throw new NotFoundError('Historia clinica no encontrada.');
       }
       ehr = response.rows[0];
     } catch (err) {
-      throw new DefaultError('DatabaseError', 'Error al obtener EHR', 500);
+      throw new InternalServerError('Error al obtener EHR.');
     }
 
     try {
@@ -66,11 +62,7 @@ export class EHRModel {
       const { rows } = await pool.query(query, values);
       return rows[0];
     } catch (err) {
-      throw new DefaultError(
-        'DatabaseError',
-        'Error al crear HC Fisiatrica',
-        500,
-      );
+      throw new InternalServerError('Error al crear HC Fisiatrica.');
     }
   }
 }

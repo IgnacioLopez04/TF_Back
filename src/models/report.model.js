@@ -29,11 +29,7 @@ export class ReportModel {
       );
       return response.rows[0].id_informe;
     } catch (error) {
-      throw new DefaultError(
-        'DatabaseError',
-        'Error al crear el informe.',
-        500,
-      );
+      throw new InternalServerError('Error al crear el informe.');
     }
   }
   static async getReport(id_informe) {
@@ -44,11 +40,7 @@ export class ReportModel {
       );
       return report.rows[0];
     } catch (error) {
-      throw new DefaultError(
-        'DatabaseError',
-        'Error al obtener el informe.',
-        500,
-      );
+      throw new InternalServerError('Error al obtener el informe.');
     }
   }
   static async getReports(dni_paciente) {
@@ -59,11 +51,7 @@ export class ReportModel {
       );
       return report.rows;
     } catch (error) {
-      throw new DefaultError(
-        'DatabaseError',
-        'Error al obtener los informes.',
-        500,
-      );
+      throw new InternalServerError('Error al obtener los informes.');
     }
   }
   static async insertAnnex(id_informe, id_usuario, text) {
@@ -73,18 +61,14 @@ export class ReportModel {
         [id_informe],
       );
       if (report.rows[0].length === 0) {
-        throw new DefaultError(
-          'NotFoundError',
-          'Error al encontrar el informe.',
-          404,
-        );
+        throw new NotFoundError('Error al encontrar el informe.');
       }
 
       const response = await pool.query(
         `
-               INSERT INTO anexo(id_informe, id_usuario, reporte)
-               VALUES($1,$2,$3)
-            `,
+          INSERT INTO anexo(id_informe, id_usuario, reporte)
+          VALUES($1,$2,$3)
+      `,
         [id_informe, id_usuario, text],
       );
       return;
@@ -92,11 +76,7 @@ export class ReportModel {
       if (error.statusCode === 404) {
         return error;
       } else {
-        throw new DefaultError(
-          'DatabaseError',
-          'Error al crear el anexo.',
-          500,
-        );
+        throw new InternalServerError('Error al crear el anexo.');
       }
     }
   }
@@ -107,11 +87,7 @@ export class ReportModel {
         [id_informe],
       );
       if (report.rows[0].length === 0) {
-        throw new DefaultError(
-          'NotFoundError',
-          'Error al encontrar el informe.',
-          404,
-        );
+        throw new NotFoundError('Error al encontrar el informe.');
       }
 
       const annexies = await pool.query(
@@ -123,11 +99,7 @@ export class ReportModel {
       if (error.statusCode === 404) {
         return error;
       } else {
-        throw new DefaultError(
-          'DatabaseError',
-          'Error al consultar los anexos.',
-          500,
-        );
+        throw new InternalServerError('Error al consultar los anexos.');
       }
     }
   }
@@ -138,11 +110,7 @@ export class ReportModel {
         [id_documento, id_informe],
       );
     } catch (err) {
-      throw new DefaultError(
-        'DatabaseError',
-        'Error al agregar el documento al informe',
-        500,
-      );
+      throw new InternalServerError('Error al agregar el documento al informe');
     }
   }
 }
