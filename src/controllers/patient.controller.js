@@ -42,8 +42,7 @@ export class PatientController {
 
     try {
       const patient = await PatientModel.getPatient(dni_paciente);
-      if (!patient)
-        return res.status(404).json({ message: 'Paciente no encontrado.' });
+      if (!patient) throw new NotFoundError('Paciente no encontrado.');
 
       await PatientModel.deletePatient(Number(dni_paciente));
       return res.status(200).json({ message: 'Paciente eliminado.' });

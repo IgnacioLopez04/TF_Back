@@ -8,6 +8,7 @@ import { router as apiRouter } from './src/routes/index.routes.js';
 import { router as authRouter } from './src/routes/auth.routes.js';
 import swaggerUi from 'swagger-ui-express';
 import YAML from 'yamljs';
+import { NotFoundError } from './src/errors/errors.js';
 
 const swaggerDocument = YAML.load('./docs/swagger.yaml');
 const app = express();
@@ -28,6 +29,9 @@ app.use('/auth', authRouter);
 
 app.use(validateToken);
 app.use('/api', apiRouter);
+app.use((req, res, next) => {
+  next(new NotFoundError('Ruta no encontrada'));
+});
 
 app.use(errorHandler);
 
