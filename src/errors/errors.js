@@ -24,6 +24,12 @@ export class NotFoundError extends DefaultError {
   }
 }
 
+export class UnsupportedMediaTypeError extends DefaultError {
+  constructor(message = 'Unsupported Media Type') {
+    super('UnsupportedMediaTypeError', message, 415);
+  }
+}
+
 export class InternalServerError extends DefaultError {
   constructor(message = 'Internal Server Error') {
     super('InternalServerError', message, 500);
