@@ -26,7 +26,9 @@ export class PatientController {
       //* dni_paciente, nombre_paciente, apellido_paciente, fecha_nacimiento, id_provinicia, telefono
       const obj = {
         dni_paciente: data.id,
-        nombre_paciente: data.name[0].given[0] + ' ' + data.name[0].given[1],
+        nombre_paciente:
+          data.name[0].given[0] +
+          (data.name[0].given[1] ? ' ' + data.name[0].given[1] : ''),
         apellido_paciente: data.name[0].family,
         fecha_nacimiento: data.birthDate,
         telefono: parseInt(data.telecom[0].value.replace(/-/g, ''), 10),
