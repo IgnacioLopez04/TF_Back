@@ -24,13 +24,10 @@ export class AuthController {
 
       await UserModel.updateExpiredAt(user.id_usuario);
 
-      res.cookie('access_token', access_token, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'none',
-      });
+      res.setHeader('Authorization', access_token);
       return res.json({
         user,
+        access_token,
       });
     } catch (err) {
       next(err);

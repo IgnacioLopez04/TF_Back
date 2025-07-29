@@ -11,8 +11,12 @@ export const createToken = async (user) => {
 };
 
 export const validateToken = async (req, res, next) => {
-  const cookie = req.headers['cookie'];
-  const token = cookie ? cookie.replace('access_token=', '') : null;
+  const authHeader = req.headers['authorization'];
+  const token = authHeader ? authHeader : null;
+
+  if (!token) {
+    return res.status(401).send('Authorization header is required');
+  }
 
   jwt.verify(token, SECRET_KEY, (err, decoded) => {
     if (err) {
