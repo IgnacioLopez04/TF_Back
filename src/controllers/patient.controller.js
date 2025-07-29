@@ -23,17 +23,13 @@ export class PatientController {
   static async postPatient(req, res, next) {
     try {
       const data = req.body;
-      //* dni_paciente, nombre_paciente, apellido_paciente, fecha_nacimiento, id_provinicia, telefono
-      const obj = {
-        dni_paciente: data.id,
-        nombre_paciente:
-          data.name[0].given[0] +
-          (data.name[0].given[1] ? ' ' + data.name[0].given[1] : ''),
-        apellido_paciente: data.name[0].family,
-        fecha_nacimiento: data.birthDate,
-        telefono: parseInt(data.telecom[0].value.replace(/-/g, ''), 10),
-      };
-      await PatientModel.insertPatient(obj);
+
+      //* id_codigo_postal y id_barrio debo ver como se van a manejar
+      await PatientModel.insertPatient({
+        ...data,
+        id_codigo_postal: null,
+        id_barrio: null,
+      });
       return res.status(201).json({ message: 'Paciente creado.' });
     } catch (err) {
       next(err);

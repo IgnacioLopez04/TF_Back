@@ -34,15 +34,6 @@ export class PatientModel {
     id_barrio,
     telefono,
   }) {
-    console.log({
-      dni_paciente,
-      nombre_paciente,
-      apellido_paciente,
-      fecha_nacimiento,
-      id_codigo_postal,
-      id_barrio,
-      telefono,
-    });
     try {
       const patient = await pool.query(
         'SELECT * FROM paciente WHERE dni_paciente=$1',
