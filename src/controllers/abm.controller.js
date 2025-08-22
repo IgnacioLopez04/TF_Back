@@ -41,4 +41,21 @@ export class UbicacionController {
       next(error);
     }
   }
+  static async obtenerProvincias(req, res, next) {
+    try {
+      const provincias = await UbicacionModel.obtenerProvincias();
+      res.status(200).json(provincias);
+    } catch (error) {
+      next(error);
+    }
+  }
+  static async obtenerCiudades(req, res, next) {
+    const { id_provincia } = req.params;
+    try {
+      const ciudades = await UbicacionModel.obtenerCiudades(id_provincia);
+      res.status(200).json(ciudades);
+    } catch (error) {
+      next(error);
+    }
+  }
 }

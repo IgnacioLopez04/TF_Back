@@ -23,4 +23,23 @@ export class UbicacionModel {
       throw new InternalServerError('Error al cargar la ciudad.');
     }
   }
+  static async obtenerProvincias() {
+    try {
+      const { rows } = await pool.query('SELECT * FROM provincia');
+      return rows;
+    } catch (error) {
+      throw new InternalServerError('Error al obtener las provincias.');
+    }
+  }
+  static async obtenerCiudades(id_provincia) {
+    try {
+      const { rows } = await pool.query(
+        'SELECT * FROM ciudad WHERE id_provincia = $1',
+        [id_provincia],
+      );
+      return rows;
+    } catch (error) {
+      throw new InternalServerError('Error al obtener las ciudades.');
+    }
+  }
 }
