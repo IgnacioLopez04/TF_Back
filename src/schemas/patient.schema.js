@@ -15,5 +15,10 @@ export class PatientSchema {
     apellido_paciente: z.string().min(1, 'El apellido es requerido'),
     fecha_nacimiento: z.union([z.number(), z.string()]).optional(),
     telefono: z.union([z.number(), z.string()]).optional(),
+    id_ciudad: z.string().optional(),
+    barrio: z.string().optional(),
+    calle: z.string().optional(),
+    id_prestacion: z.string().optional(),
+    piso_departamento: z.string().optional(),
   });
 }

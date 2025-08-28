@@ -24,15 +24,17 @@ export class PatientModel {
     }
   }
 
-  // TODO calle y numero de la calle
   static async insertPatient({
     dni_paciente,
     nombre_paciente,
     apellido_paciente,
     fecha_nacimiento,
-    id_codigo_postal,
-    id_barrio,
+    id_ciudad,
+    barrio_paciente,
+    calle_paciente,
     telefono,
+    id_prestacion,
+    piso_departamento,
   }) {
     try {
       const patient = await pool.query(
@@ -40,7 +42,7 @@ export class PatientModel {
         [dni_paciente],
       );
       if (patient.rows.length > 0) {
-        if (!patient.rows.inactivo) {
+        if (patient.rows[0].inactivo) {
           await pool.query(
             'UPDATE paciente SET inactivo=false WHERE dni_paciente=$1',
             [dni_paciente],
@@ -50,15 +52,19 @@ export class PatientModel {
       }
 
       const res = await pool.query(
-        'INSERT INTO paciente(dni_paciente, nombre, apellido, fecha_nacimiento, id_codigo_postal, id_barrio, telefono) VALUES($1, $2, $3, $4, $5, $6, $7)',
+        'INSERT INTO paciente(dni_paciente, nombre, apellido, fecha_nacimiento, id_ciudad, barrio, calle, telefono, id_prestacion, piso_departamento, inactivo) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)',
         [
           dni_paciente,
           nombre_paciente,
           apellido_paciente,
           fecha_nacimiento,
-          id_codigo_postal,
-          id_barrio,
+          id_ciudad,
+          barrio_paciente,
+          calle_paciente,
           telefono,
+          id_prestacion,
+          piso_departamento,
+          false,
         ],
       );
     } catch (err) {
@@ -76,27 +82,34 @@ export class PatientModel {
       throw new InternalServerError('Error al eliminar el paciente.');
     }
   }
+
   static async updatePatient({
     dni_paciente,
     nombre_paciente,
     apellido_paciente,
     fecha_nacimiento,
-    id_codigo_postal,
-    id_barrio,
+    id_ciudad,
+    barrio_paciente,
+    calle_paciente,
     telefono,
+    id_prestacion,
+    piso_departamento,
     dni_paciente_viejo,
   }) {
     try {
       const response = await pool.query(
-        'UPDATE paciente SET dni_paciente=$1, nombre=$2, apellido=$3, fecha_nacimiento=$4, id_codigo_postal=$5, id_barrio=$6, telefono=$7 WHERE dni_paciente=$8',
+        'UPDATE paciente SET dni_paciente=$1, nombre=$2, apellido=$3, fecha_nacimiento=$4, id_ciudad=$5, barrio=$6, calle=$7, telefono=$8, id_prestacion=$9, piso_departamento=$10 WHERE dni_paciente=$11',
         [
           dni_paciente,
           nombre_paciente,
           apellido_paciente,
           fecha_nacimiento,
-          id_codigo_postal,
-          id_barrio,
+          id_ciudad,
+          barrio_paciente,
+          calle_paciente,
           telefono,
+          id_prestacion,
+          piso_departamento,
           dni_paciente_viejo,
         ],
       );
