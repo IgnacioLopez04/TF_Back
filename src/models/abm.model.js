@@ -25,7 +25,9 @@ export class UbicacionModel {
   }
   static async obtenerProvincias() {
     try {
-      const { rows } = await pool.query('SELECT * FROM provincia');
+      const { rows } = await pool.query(
+        'SELECT * FROM provincia ORDER BY nombre',
+      );
       return rows;
     } catch (error) {
       throw new InternalServerError('Error al obtener las provincias.');
@@ -34,12 +36,33 @@ export class UbicacionModel {
   static async obtenerCiudades(id_provincia) {
     try {
       const { rows } = await pool.query(
-        'SELECT * FROM ciudad WHERE id_provincia = $1',
+        'SELECT id_ciudad, nombre FROM ciudad WHERE id_provincia = $1 ORDER BY nombre',
         [id_provincia],
       );
       return rows;
     } catch (error) {
       throw new InternalServerError('Error al obtener las ciudades.');
+    }
+  }
+}
+
+export class GeneralModel {
+  static async obtenerMutuales() {
+    try {
+      const { rows } = await pool.query('SELECT * FROM mutual ORDER BY nombre');
+      return rows;
+    } catch (error) {
+      throw new InternalServerError('Error al obtener las mutuales.');
+    }
+  }
+  static async obtenerPrestaciones() {
+    try {
+      const { rows } = await pool.query(
+        'SELECT * FROM prestacion ORDER BY nombre',
+      );
+      return rows;
+    } catch (error) {
+      throw new InternalServerError('Error al obtener las prestaciones.');
     }
   }
 }

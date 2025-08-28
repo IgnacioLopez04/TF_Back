@@ -1,8 +1,16 @@
 import { Router } from 'express';
-import { UbicacionController } from '../controllers/abm.controller.js';
+import {
+  UbicacionController,
+  GeneralController,
+} from '../controllers/abm.controller.js';
 
 const router = Router();
 
+//! General
+router.get('/mutuales', GeneralController.obtenerMutuales);
+router.get('/prestaciones', GeneralController.obtenerPrestaciones);
+
+//! Ubicacion
 router.post('/cargar-provincias', UbicacionController.cargarProvincias);
 router.post('/cargar-ciudades', UbicacionController.cargarCiudades);
 router.get('/provincias', UbicacionController.obtenerProvincias);

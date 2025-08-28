@@ -1,7 +1,7 @@
 // TODO - Aca voy a colocar todos los ABM de aquellas tablas que sea secundarias y pero necesarias para el sistema
 // Mutual, Datos_mutual, Provincia, Ciudad, Barrio, codigo_postal, calle, prestacion, modulo, etc.
 import axios from 'axios';
-import { UbicacionModel } from '../models/abm.model.js';
+import { UbicacionModel, GeneralModel } from '../models/abm.model.js';
 
 //! Ubicacion
 export class UbicacionController {
@@ -54,6 +54,25 @@ export class UbicacionController {
     try {
       const ciudades = await UbicacionModel.obtenerCiudades(id_provincia);
       res.status(200).json(ciudades);
+    } catch (error) {
+      next(error);
+    }
+  }
+}
+
+export class GeneralController {
+  static async obtenerMutuales(req, res, next) {
+    try {
+      const mutuales = await GeneralModel.obtenerMutuales();
+      res.status(200).json(mutuales);
+    } catch (error) {
+      next(error);
+    }
+  }
+  static async obtenerPrestaciones(req, res, next) {
+    try {
+      const prestaciones = await GeneralModel.obtenerPrestaciones();
+      res.status(200).json(prestaciones);
     } catch (error) {
       next(error);
     }
