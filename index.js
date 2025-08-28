@@ -14,7 +14,15 @@ const swaggerDocument = YAML.load('./docs/swagger.yaml');
 const app = express();
 
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
-app.use(cors({ origin: ['http://localhost:5173', 'http://localhost:8080'] }));
+app.use(
+  cors({
+    origin: [
+      'http://localhost:5173',
+      'http://localhost:8080',
+      'http://localhost:8081',
+    ],
+  }),
+);
 app.use(
   fileUpload({
     useTempFiles: false,
