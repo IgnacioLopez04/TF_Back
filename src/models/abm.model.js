@@ -66,3 +66,25 @@ export class GeneralModel {
     }
   }
 }
+
+export class TutorModel {
+  static async insertTutor(tutor) {
+    try {
+      await pool.query(
+        'INSERT INTO tutor (dni_paciente, dni, nombre, fecha_nacimiento,ocupacion, relacion, convive, lugar_nacimiento) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)',
+        [
+          tutor.dni_paciente,
+          tutor.dni,
+          tutor.nombre,
+          tutor.fechaNacimiento,
+          tutor.ocupacion,
+          tutor.relacion,
+          tutor.convive,
+          tutor.lugarNacimiento,
+        ],
+      );
+    } catch (error) {
+      throw new InternalServerError('Error al insertar el tutor.');
+    }
+  }
+}

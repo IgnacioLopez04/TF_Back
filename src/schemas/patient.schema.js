@@ -20,5 +20,18 @@ export class PatientSchema {
     calle: z.string().optional(),
     id_prestacion: z.string().optional(),
     piso_departamento: z.string().optional(),
+    tutores: z
+      .array(
+        z.object({
+          nombre: z.string().min(1, 'El nombre es requerido'),
+          dni: z.string().min(1, 'El DNI es requerido'),
+          fechaNacimiento: z.union([z.number(), z.string()]).optional(),
+          lugarNacimiento: z.string().optional(),
+          ocupacion: z.string().optional(),
+          relacion: z.string().optional(),
+          convive: z.boolean().optional(),
+        }),
+      )
+      .optional(),
   });
 }

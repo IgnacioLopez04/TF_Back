@@ -17,7 +17,14 @@ export class PatientModel {
 
   static async getPatients() {
     try {
-      const patients = await pool.query('SELECT * FROM paciente');
+      const patients = await pool.query(
+        `
+          SELECT paciente.nombre, paciente.apellido, paciente.dni_paciente, prestacion.nombre as prestacion
+          FROM paciente
+          INNER JOIN prestacion ON prestacion.id_prestacion = paciente.id_prestacion
+          WHERE paciente.inactivo = false
+        `,
+      );
       return patients.rows;
     } catch (err) {
       throw new InternalServerError('Error al obtener los pacientes.');

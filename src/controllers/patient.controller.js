@@ -1,6 +1,6 @@
 import { BadRequestError, NotFoundError } from '../errors/errors.js';
 import { PatientModel } from '../models/patient.model.js';
-
+import { TutorModel } from '../models/abm.model.js';
 export class PatientController {
   static async getPatient(req, res, next) {
     const { dni_paciente } = req.params;
@@ -25,7 +25,6 @@ export class PatientController {
   static async postPatient(req, res, next) {
     try {
       const data = req.body;
-
       await PatientModel.insertPatient({
         ...data,
         id_ciudad: data.id_ciudad || null,
@@ -34,6 +33,17 @@ export class PatientController {
         id_prestacion: data.id_prestacion || null,
         piso_departamento: data.piso_departamento || null,
       });
+
+      // Crear los tutores si existen
+      if (data.tutores && data.tutores.length > 0) {
+        for (const tutor of data.tutores) {
+          const tutorData = {
+            ...tutor,
+            dni_paciente: data.dni_paciente,
+          };
+          await TutorModel.insertTutor(tutorData);
+        }
+      }
       return res.status(201).json({ message: 'Paciente creado.' });
     } catch (err) {
       next(err);
