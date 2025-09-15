@@ -1,12 +1,15 @@
 import { BadRequestError, NotFoundError } from '../errors/errors.js';
 import { PatientModel } from '../models/patient.model.js';
 import { TutorModel } from '../models/abm.model.js';
+import { cleanHashId } from '../utils/encrypt.js';
 export class PatientController {
   static async getPatient(req, res, next) {
-    const { dni_paciente } = req.params;
-    if (!dni_paciente) throw new BadRequestError('DNI no proporcionado.');
+    // El hash_id ya está limpio y el DNI está disponible en req.dni_paciente
+    // gracias al middleware getPatientDni
+    const { hash_id } = req;
+
     try {
-      const result = await PatientModel.getPatient(dni_paciente);
+      const result = await PatientModel.getPatient(hash_id);
       return res.json(result);
     } catch (err) {
       next(err);
@@ -51,13 +54,11 @@ export class PatientController {
   }
 
   static async deletePatient(req, res, next) {
-    const { dni_paciente } = req.params;
+    // El DNI ya está disponible en req.dni_paciente gracias al middleware getPatientDni
+    const { dni_paciente } = req;
 
     try {
-      const patient = await PatientModel.getPatient(dni_paciente);
-      if (!patient) throw new NotFoundError('Paciente no encontrado.');
-
-      await PatientModel.deletePatient(Number(dni_paciente));
+      await PatientModel.deletePatient(dni_paciente);
       return res.status(200).json({ message: 'Paciente eliminado.' });
     } catch (error) {
       next(error);

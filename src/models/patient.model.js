@@ -1,12 +1,14 @@
 import { pool } from '../configs/config.js';
 import { InternalServerError } from '../errors/errors.js';
-
+import { createHashId } from '../utils/encrypt.js';
 export class PatientModel {
-  static async getPatient(dni_paciente) {
+  static async getPatient(hash_id) {
     try {
       const res = await pool.query(
-        'SELECT * FROM paciente WHERE dni_paciente = $1',
-        [dni_paciente],
+        ` SELECT paciente.*,prestacion.nombre as prestacion
+          FROM paciente
+          INNER JOIN prestacion ON prestacion.id_prestacion = paciente.id_prestacion WHERE hash_id = $1`,
+        [hash_id],
       );
       return res.rows[0];
     } catch (e) {
@@ -15,11 +17,24 @@ export class PatientModel {
     }
   }
 
+  static async getPatientDni(hash_id) {
+    try {
+      const res = await pool.query(
+        'SELECT dni_paciente FROM paciente WHERE hash_id = $1 AND inactivo = false',
+        [hash_id],
+      );
+      return res.rows[0]?.dni_paciente;
+    } catch (e) {
+      if (e instanceof InternalServerError) throw e;
+      throw new InternalServerError('Error al consultar el DNI del paciente.');
+    }
+  }
+
   static async getPatients() {
     try {
       const patients = await pool.query(
         `
-          SELECT paciente.nombre, paciente.apellido, paciente.dni_paciente, prestacion.nombre as prestacion
+          SELECT paciente.nombre, paciente.apellido, paciente.dni_paciente, prestacion.nombre as prestacion, paciente.hash_id
           FROM paciente
           INNER JOIN prestacion ON prestacion.id_prestacion = paciente.id_prestacion
           WHERE paciente.inactivo = false
@@ -58,8 +73,12 @@ export class PatientModel {
         return;
       }
 
+      const hash_id = createHashId(
+        dni_paciente + nombre_paciente + apellido_paciente + fecha_nacimiento,
+      );
+
       const res = await pool.query(
-        'INSERT INTO paciente(dni_paciente, nombre, apellido, fecha_nacimiento, id_ciudad, barrio, calle, telefono, id_prestacion, piso_departamento, inactivo) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)',
+        'INSERT INTO paciente(dni_paciente, nombre, apellido, fecha_nacimiento, id_ciudad, barrio, calle, telefono, id_prestacion, piso_departamento, inactivo, hash_id) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)',
         [
           dni_paciente,
           nombre_paciente,
@@ -72,6 +91,7 @@ export class PatientModel {
           id_prestacion,
           piso_departamento,
           false,
+          hash_id,
         ],
       );
     } catch (err) {
