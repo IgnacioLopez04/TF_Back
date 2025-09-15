@@ -22,7 +22,7 @@ export class ReportController {
         specialityId,
         ehrId,
       );
-      return res.json(reportId);
+      return res.json({ id_informe: reportId });
     } catch (err) {
       next(err);
     }

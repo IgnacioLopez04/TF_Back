@@ -1,5 +1,5 @@
 import { pool } from '../configs/config.js';
-import { DefaultError } from '../errors/errors.js';
+import { DefaultError, InternalServerError } from '../errors/errors.js';
 
 export class ReportModel {
   static async insertReport(
@@ -14,7 +14,7 @@ export class ReportModel {
     try {
       const response = await pool.query(
         `
-               INSERT INTO informe(id_usuario, dni_paciente, reporte, id_especialidad, titulo, id_tipo_informe)
+               INSERT INTO informe(id_usuario, dni_paciente, reporte, id_especialidad, titulo, id_tipo_informe, id_historia_clinica)
                VALUES($1,$2,$3,$4,$5,$6,$7) RETURNING id_informe
             `,
         [
