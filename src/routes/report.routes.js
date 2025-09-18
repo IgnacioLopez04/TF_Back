@@ -8,6 +8,6 @@ const router = Router();
 router.post('/create', ReportController.createReport);
 router.post('/createAnnex', ReportController.createAnnex);
 router.get('/:reportId', ReportController.getReport);
-router.get('/all/:patientDni', ReportController.getReports);
+router.get('/all/:hashId', ReportController.getReports);
 
 export { router };

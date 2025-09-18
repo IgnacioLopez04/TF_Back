@@ -50,10 +50,10 @@ export class ReportController {
     }
   }
   static async getReports(req, res, next) {
-    const { patientDni } = req.params;
+    const { dni_paciente } = req;
 
     try {
-      const reports = await ReportModel.getReports(patientDni);
+      const reports = await ReportModel.getReports(dni_paciente);
 
       const result = await Promise.all(
         reports.map(async (report) => {
