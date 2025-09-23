@@ -1,4 +1,5 @@
 import { ReportModel } from '../models/report.model.js';
+import { createHashId } from '../utils/encrypt.js';
 
 export class ReportController {
   static async createReport(req, res, next) {
@@ -12,6 +13,8 @@ export class ReportController {
       ehrId,
     } = req.body;
 
+    const hashId = createHashId(`${patientDni}${tittle}${userId}`);
+
     try {
       const reportId = await ReportModel.insertReport(
         userId,
@@ -21,6 +24,7 @@ export class ReportController {
         tittle,
         specialityId,
         ehrId,
+        hashId,
       );
       return res.json({ id_informe: reportId });
     } catch (err) {
@@ -28,10 +32,25 @@ export class ReportController {
     }
   }
   static async createAnnex(req, res, next) {
-    const { reportId, userId, text } = req.body;
+    const { reportHashId, userId, text } = req.body;
+
+    console.log(userId);
+    console.log(reportHashId);
+    console.log(text);
+
+    const report = await ReportModel.getReport(reportHashId);
+    if (!report) {
+      return res.status(404).json({ message: 'Reporte no encontrado' });
+    }
+    const hashId = createHashId(`${report.id_informe}${userId}${text}`);
 
     try {
-      const annex = await ReportModel.insertAnnex(reportId, userId, text);
+      const annex = await ReportModel.insertAnnex(
+        report.id_informe,
+        userId,
+        text,
+        hashId,
+      );
       return res.status(201).end();
     } catch (err) {
       next(err);
@@ -54,19 +73,22 @@ export class ReportController {
 
     try {
       const reports = await ReportModel.getReports(dni_paciente);
+      return res.json(reports);
+    } catch (err) {
+      next(err);
+    }
+  }
+  static async getAnnexByReport(req, res, next) {
+    const { reportHashId } = req.params;
 
-      const result = await Promise.all(
-        reports.map(async (report) => {
-          const annexs = await ReportModel.getAllAnnexByReport(
-            report.id_informe,
-          );
-          return {
-            report,
-            annexs,
-          };
-        }),
-      );
-      return res.json(result);
+    try {
+      const report = await ReportModel.getReport(reportHashId);
+      if (!report) {
+        return res.status(404).json({ message: 'Reporte no encontrado' });
+      }
+
+      const annexes = await ReportModel.getAllAnnexByReport(report.id_informe);
+      return res.json(annexes);
     } catch (err) {
       next(err);
     }
