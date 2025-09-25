@@ -23,4 +23,13 @@ export class EHRController {
       next(err);
     }
   };
+  static getHCFisiatric = async (req, res, next) => {
+    const { ehrId } = req.body;
+    try {
+      const ehr = await EHRModel.getEHRId(ehrId);
+      if (!ehr) throw new Error('EHR no encontrado.');
+    } catch (err) {
+      next(err);
+    }
+  };
 }

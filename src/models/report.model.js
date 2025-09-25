@@ -10,11 +10,12 @@ export class ReportModel {
     titulo,
     id_especialidad,
     id_historia_clinica,
+    hash_id,
   ) {
     try {
       const response = await pool.query(
         `
-               INSERT INTO informe(id_usuario, dni_paciente, reporte, id_especialidad, titulo, id_tipo_informe, id_historia_clinica, hash_id)
+               INSERT INTO informe(id_usuario, dni_paciente, reporte, id_especialidad, titulo, id_tipo_informe, id_historia_clinica, hash_id )
                VALUES($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id_informe
             `,
         [

@@ -1,7 +1,8 @@
 import { BadRequestError, NotFoundError } from '../errors/errors.js';
 import { PatientModel } from '../models/patient.model.js';
 import { TutorModel } from '../models/abm.model.js';
-import { cleanHashId } from '../utils/encrypt.js';
+import { cleanHashId, createHashId } from '../utils/encrypt.js';
+import { EHRModel } from '../models/ehr.model.js';
 export class PatientController {
   static async getPatient(req, res, next) {
     // El hash_id ya está limpio y el DNI está disponible en req.dni_paciente
@@ -47,6 +48,9 @@ export class PatientController {
           await TutorModel.insertTutor(tutorData);
         }
       }
+
+      const hashId = createHashId(`${data.dni_paciente}${new Date()}`);
+      await EHRModel.createEHR(data.dni_paciente, hashId);
       return res.status(201).json({ message: 'Paciente creado.' });
     } catch (err) {
       next(err);

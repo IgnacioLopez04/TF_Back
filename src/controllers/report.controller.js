@@ -1,5 +1,6 @@
 import { ReportModel } from '../models/report.model.js';
 import { createHashId } from '../utils/encrypt.js';
+import { EHRModel } from '../models/ehr.model.js';
 
 export class ReportController {
   static async createReport(req, res, next) {
@@ -16,6 +17,11 @@ export class ReportController {
     const hashId = createHashId(`${patientDni}${tittle}${userId}`);
 
     try {
+      const ehr = await EHRModel.getEHR(ehrId);
+      if (!ehr) {
+        return res.status(404).json({ message: 'EHR no encontrado' });
+      }
+
       const reportId = await ReportModel.insertReport(
         userId,
         patientDni,
@@ -23,9 +29,11 @@ export class ReportController {
         reportType,
         tittle,
         specialityId,
-        ehrId,
+        ehr.id_historia_clinica,
         hashId,
       );
+
+      await EHRModel.updateModificationDate(ehr.hash_id);
       return res.json({ id_informe: reportId });
     } catch (err) {
       next(err);
@@ -33,10 +41,6 @@ export class ReportController {
   }
   static async createAnnex(req, res, next) {
     const { reportHashId, userId, text } = req.body;
-
-    console.log(userId);
-    console.log(reportHashId);
-    console.log(text);
 
     const report = await ReportModel.getReport(reportHashId);
     if (!report) {
