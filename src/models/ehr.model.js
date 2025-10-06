@@ -28,9 +28,9 @@ export class EHRModel {
       );
     }
   }
-  static async getEHRId(hashId) {
-    const query = 'SELECT * FROM historia_clinico WHERE hash_id = $1';
-    const values = [hashId];
+  static async getEHRByDNI(dni) {
+    const query = 'SELECT * FROM historia_clinica WHERE dni_paciente = $1';
+    const values = [dni];
     try {
       const { rows } = await pool.query(query, values);
       return rows[0];
@@ -57,34 +57,39 @@ export class EHRModel {
   }
   static async createHCFisiatric(ehrId, hcFisiatric) {
     const {
+      evaluacionConsulta,
       antecedentes,
-      medicacionActual,
-      estudiosRealziados,
-      fisiologico,
       anamnesisSistemica,
       examenFisico,
       diagnosticoFuncional,
-      conductaSeguir,
     } = hcFisiatric;
 
     const query =
-      'INSERT INTO hc_fisiatrica (id_historia_clinica, antecedentes, medicacion_actual, estudios_realizados, fisiologico, anamnesis_sistemica, examen_fisico, diagnostico_funcional, conducta_seguir) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *';
+      'INSERT INTO hc_fisiatrica (id_historia_clinica, evaluacion_consulta, antecedentes, anamnesis_sistemica, examen_fisico, diagnostico_funcional) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *';
     const values = [
       ehrId,
-      antecedentes,
-      medicacionActual,
-      estudiosRealziados,
-      fisiologico,
-      anamnesisSistemica,
-      examenFisico,
-      diagnosticoFuncional,
-      conductaSeguir,
+      JSON.stringify(evaluacionConsulta),
+      JSON.stringify(antecedentes),
+      JSON.stringify(anamnesisSistemica),
+      JSON.stringify(examenFisico),
+      JSON.stringify(diagnosticoFuncional),
     ];
     try {
       const { rows } = await pool.query(query, values);
       return rows[0];
     } catch (err) {
       throw new InternalServerError('Error al crear HC Fisiatrica.');
+    }
+  }
+  static async getHCFisiatric(ehrId) {
+    try {
+      const { rows } = await pool.query(
+        'SELECT * FROM hc_fisiatrica WHERE id_historia_clinica = $1',
+        [ehrId],
+      );
+      return rows[0];
+    } catch (err) {
+      throw new InternalServerError('Error al obtener HC Fisiatrica.');
     }
   }
 }

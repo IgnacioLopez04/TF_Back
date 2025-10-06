@@ -8,9 +8,9 @@ import { cleanHashId } from '../utils/encrypt.js';
  */
 export const getPatientDni = async (req, res, next) => {
   try {
-    // Obtener hashId de los parámetros de la URL
-    const { hash_id } = req.params;
-    
+    // Obtener hashId de los parámetros de la URL o del body
+    const hash_id = req.params.hash_id || req.body.hash_id;
+
     if (!hash_id) {
       throw new BadRequestError('Hash ID del paciente no proporcionado.');
     }
