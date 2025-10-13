@@ -1,0 +1,215 @@
+openapi: 3.0.0
+info:
+  title: API Historia Clínica
+  version: 1.0.0
+  description: API REST para la gestión de pacientes, usuarios, archivos e informes médicos.
+servers:
+  - url: http://localhost:3000
+paths:
+  /api/auth/login:
+    post:
+      summary: Iniciar sesión
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                password:
+                  type: string
+      responses:
+        '200':
+          description: Autenticación exitosa
+        '401':
+          description: Credenciales inválidas
+  /api/patient:
+    get:
+      summary: Obtener todos los pacientes
+      responses:
+        '200':
+          description: Lista de pacientes
+    post:
+      summary: Crear un paciente
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                id:
+                  type: string
+                name:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      given:
+                        type: array
+                        items:
+                          type: string
+                      family:
+                        type: string
+                birthDate:
+                  type: string
+                telecom:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      value:
+                        type: string
+      responses:
+        '201':
+          description: Paciente creado
+
+  /api/patient/{dni_paciente}:
+    get:
+      summary: Obtener paciente por DNI
+      parameters:
+        - name: dni_paciente
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Paciente encontrado
+
+  /api/patient/delete/{dni_paciente}:
+    delete:
+      summary: Eliminar paciente por DNI
+      parameters:
+        - name: dni_paciente
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Paciente eliminado
+  /api/report/create:
+    post:
+      summary: Crear informe
+      responses:
+        '201':
+          description: Informe creado
+
+  /api/report/createAnnex:
+    post:
+      summary: Crear anexo para informe
+      responses:
+        '201':
+          description: Anexo creado
+
+  /api/report/{reportId}:
+    get:
+      summary: Obtener informe por ID
+      parameters:
+        - name: reportId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Informe encontrado
+
+  /api/report/all/{patientDni}:
+    get:
+      summary: Obtener todos los informes de un paciente
+      parameters:
+        - name: patientDni
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Informes encontrados
+  /api/user/create:
+    post:
+      summary: Crear usuario
+      responses:
+        '201':
+          description: Usuario creado
+
+  /api/user/AllActives:
+    get:
+      summary: Obtener usuarios activos
+      responses:
+        '200':
+          description: Lista de usuarios activos
+
+  /api/user/{dni}:
+    get:
+      summary: Obtener usuario por DNI
+      parameters:
+        - name: dni
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Usuario encontrado
+    delete:
+      summary: Bloquear usuario
+      parameters:
+        - name: dni
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Usuario bloqueado
+
+  /api/user:
+    get:
+      summary: Obtener todos los usuarios
+      responses:
+        '200':
+          description: Lista de usuarios
+
+  /api/user/expiration:
+    put:
+      summary: Actualizar expiración de usuario
+      responses:
+        '200':
+          description: Expiración actualizada
+
+  /api/user/activate:
+    put:
+      summary: Activar usuario
+      responses:
+        '200':
+          description: Usuario activado
+  /api/file/upload:
+    post:
+      summary: Subir archivo
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                files:
+                  type: array
+                  items:
+                    type: string
+                    format: binary
+      responses:
+        '201':
+          description: Archivos subidos
+
+  /api/file:
+    get:
+      summary: Obtener todos los archivos
+      responses:
+        '200':
+          description: Lista de archivos
