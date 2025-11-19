@@ -2,6 +2,7 @@ import { verifyGoogleToken } from '../utils/oauth.js';
 import { AuthModel } from '../models/auth.model.js';
 import { createToken } from '../utils/token.js';
 import { UserModel } from '../models/user.model.js';
+import { ForbiddenError } from '../errors/errors.js';
 
 export class AuthController {
   static async login(req, res, next) {
@@ -22,7 +23,7 @@ export class AuthController {
         access_token = await createToken(user);
       }
 
-      await UserModel.updateExpiredAt(user.id_usuario);
+      await UserModel.updateExpiredAt(user.hash_id);
 
       res.setHeader('Authorization', access_token);
       return res.json({

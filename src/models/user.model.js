@@ -9,11 +9,12 @@ export class UserModel {
     apellido_usuario,
     fecha_nacimiento,
     id_tipo_usuario,
+    hash_id,
   }) {
     try {
       const response = await pool.query(
-        ` INSERT INTO usuario(email, dni_usuario, nombre, apellido, fecha_nacimiento, id_tipo_usuario) 
-              VALUES($1, $2, $3, $4, $5, $6,$7)
+        ` INSERT INTO usuario(email, dni_usuario, nombre, apellido, fecha_nacimiento, id_tipo_usuario, hash_id) 
+              VALUES($1, $2, $3, $4, $5, $6,$7,$8)
             `,
         [
           email,
@@ -22,6 +23,7 @@ export class UserModel {
           apellido_usuario,
           fecha_nacimiento,
           id_tipo_usuario,
+          hash_id,
         ],
       );
     } catch (err) {
@@ -70,15 +72,15 @@ export class UserModel {
       throw new InternalServerError('Error al obtener los usuarios.');
     }
   }
-  static async updateExpiredAt(dni_usuario) {
+  static async updateExpiredAt(hash_id) {
     try {
       await pool.query(
         `
-               UPDATE usuario
-               SET expired_at = NOW() + INTERVAL '180 days'
-               WHERE dni_usuario = $1
-            `,
-        [dni_usuario],
+          UPDATE usuario
+          SET expired_at = NOW() + INTERVAL '180 days'
+          WHERE hash_id = $1
+      `,
+        [hash_id],
       );
     } catch (err) {
       throw new InternalServerError(
