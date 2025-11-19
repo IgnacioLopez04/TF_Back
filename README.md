@@ -85,6 +85,7 @@ npm run dev
 - Middleware de manejo de errores.
 - Validación de extensiones de archivos.
 - Preparado para cifrado de datos sensibles.
+- **Expiración automática de cuentas**: Las cuentas de usuario expiran después de 180 días de inactividad. La fecha de expiración se actualiza automáticamente con cada inicio de sesión exitoso.
 
 ---
 ## Server de prueba FHIR
