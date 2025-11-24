@@ -49,9 +49,9 @@ export class UserModel {
     try {
       const response = await pool.query(
         `
-               SELECT * 
-               FROM usuario
-            `,
+          SELECT hash_id, email, dni_usuario, nombre, apellido, fecha_nacimiento, id_tipo_usuario, inactivo, expired_at
+          FROM usuario
+      `,
       );
       return response.rows;
     } catch (err) {
@@ -62,10 +62,10 @@ export class UserModel {
     try {
       const response = await pool.query(
         `
-               SELECT * 
-               FROM usuario
-               WHERE inactivo = false
-            `,
+          SELECT * 
+          FROM usuario
+          WHERE inactivo = false
+      `,
       );
       return response.rows;
     } catch (err) {
