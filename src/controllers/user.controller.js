@@ -63,18 +63,18 @@ export class UserController {
     }
   }
   static async blockUser(req, res, next) {
-    const { userDni } = req.params;
+    const { hash_id } = req.params;
     try {
-      await UserModel.blockUser(userDni);
+      await UserModel.blockUser(hash_id);
       return res.status(200).send('Usuario bloqueado.');
     } catch (err) {
       next(err);
     }
   }
   static async activateUser(req, res, next) {
-    const { userDni } = req.body;
+    const { hash_id } = req.params;
     try {
-      await UserModel.activateUser(userDni);
+      await UserModel.activateUser(hash_id);
       return res.status(200).send('Usuario activado.');
     } catch (err) {
       next(err);

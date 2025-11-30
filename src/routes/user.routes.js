@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { UserController } from '../controllers/user.controller.js';
+import { getPatientDni } from '../middlewares/dniPaciente.middleware.js';
 
 const router = Router();
 
@@ -9,8 +10,8 @@ router.post('/create', UserController.insertUser);
 router.get('/AllActives', UserController.getActiveUsers);
 router.get('/:dni', UserController.getUser);
 router.get('/', UserController.getUsers);
-router.delete('/:dni', UserController.blockUser);
+router.delete('/:hash_id', UserController.blockUser);
 router.put('/expiration', UserController.updateExpiredAt);
-router.put('/activate', UserController.activateUser);
+router.put('/activate/:hash_id', UserController.activateUser);
 
 export { router };

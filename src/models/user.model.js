@@ -88,21 +88,21 @@ export class UserModel {
       );
     }
   }
-  static async blockUser(dni_usuario) {
+  static async blockUser(hash_id) {
     try {
       await pool.query(
         `
                UPDATE usuario
                SET inactivo = true
-               WHERE dni_usuario = $1
+               WHERE hash_id = $1
             `,
-        [dni_usuario],
+        [hash_id],
       );
     } catch (err) {
       throw new InternalServerError('Error al bloquear el usuario.');
     }
   }
-  static async activateUser(dni_usuario) {
+  static async activateUser(hash_id) {
     /**
      * Se activa el usuario y se le da una fecha de expiracion de 7 dias, para que el usuario pueda volver a logearse.
      * Si el usuario no se logea en 7 dias, se le bloquea la cuenta.
@@ -112,9 +112,9 @@ export class UserModel {
         `
                UPDATE usuario
                SET inactivo = false, expired_at = NOW() + INTERVAL '7 day'
-               WHERE dni_usuario = $1
+               WHERE hash_id = $1
             `,
-        [dni_usuario],
+        [hash_id],
       );
     } catch (err) {
       throw new InternalServerError('Error al activar el usuario.');
