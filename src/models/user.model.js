@@ -14,7 +14,7 @@ export class UserModel {
     try {
       const response = await pool.query(
         ` INSERT INTO usuario(email, dni_usuario, nombre, apellido, fecha_nacimiento, id_tipo_usuario, hash_id) 
-              VALUES($1, $2, $3, $4, $5, $6,$7,$8)
+              VALUES($1, $2, $3, $4, $5, $6,$7)
             `,
         [
           email,
