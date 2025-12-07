@@ -32,15 +32,9 @@ export class UserController {
     try {
       const exist = await UserModel.getUser(user.dni_usuario);
       if (exist) {
-        if (exist.inactivo) {
-          try {
-            await UserModel.activateUser(exist.dni_usuario);
-          } catch (err) {
-            next(err);
-          }
-        }
-        return res.json(exist);
+        return res.status(400).json({ message: 'Usuario ya existe.' });
       }
+      
     } catch (err) {
       next(err);
     }

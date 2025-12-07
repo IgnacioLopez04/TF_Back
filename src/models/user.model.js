@@ -1,5 +1,5 @@
 import { pool } from '../configs/config.js';
-import { InternalServerError } from '../errors/errors.js';
+import { InternalServerError, BadRequestError } from '../errors/errors.js';
 
 export class UserModel {
   static async insertUser({
@@ -27,6 +27,9 @@ export class UserModel {
         ],
       );
     } catch (err) {
+      if (err.code === '23505') {
+        throw new BadRequestError('Usuario ya existe.');
+      }
       throw new InternalServerError('Error al crear el usuario.');
     }
   }
