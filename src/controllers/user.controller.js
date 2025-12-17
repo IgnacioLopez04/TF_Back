@@ -81,4 +81,15 @@ export class UserController {
       next(err);
     }
   }
+  static async updateUser(req, res, next) {
+    const { hash_id } = req.params;
+    const { user } = req.body;
+
+    try {
+      await UserModel.updateUser(hash_id, user);
+      return res.status(200).json({ message: 'Usuario actualizado.' });
+    } catch (err) {
+      next(err);
+    }
+  }
 }

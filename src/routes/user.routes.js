@@ -9,6 +9,7 @@ const router = Router();
 router.post('/create', UserController.insertUser);
 router.get('/AllActives', UserController.getActiveUsers);
 router.get('/type', UserController.getUserType);
+router.put('/:hash_id', UserController.updateUser);
 router.get('/:dni', UserController.getUser);
 router.get('/', UserController.getUsers);
 router.delete('/:hash_id', UserController.blockUser);

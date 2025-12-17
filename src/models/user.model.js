@@ -131,4 +131,41 @@ export class UserModel {
       throw new InternalServerError('Error al activar el usuario.');
     }
   }
+  static async updateUser(
+    hash_id,
+    {
+      email,
+      dni_usuario,
+      nombre_usuario,
+      apellido_usuario,
+      fecha_nacimiento,
+      id_tipo_usuario,
+    },
+  ) {
+    try {
+      await pool.query(
+        `
+          UPDATE usuario
+          SET email = $1,
+              dni_usuario = $2,
+              nombre = $3,
+              apellido = $4,
+              fecha_nacimiento = $5,
+              id_tipo_usuario = $6
+          WHERE hash_id = $7
+        `,
+        [
+          email,
+          dni_usuario,
+          nombre_usuario,
+          apellido_usuario,
+          fecha_nacimiento,
+          id_tipo_usuario,
+          hash_id,
+        ],
+      );
+    } catch (err) {
+      throw new InternalServerError('Error al actualizar el usuario.');
+    }
+  }
 }
