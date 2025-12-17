@@ -2,6 +2,14 @@ import { pool } from '../configs/config.js';
 import { InternalServerError, BadRequestError } from '../errors/errors.js';
 
 export class UserModel {
+  static async getUserType() {
+    try {
+      const response = await pool.query(`SELECT * FROM tipo_usuario`);
+      return response.rows;
+    } catch (err) {
+      throw new InternalServerError('Error al obtener el tipo de usuario.');
+    }
+  }
   static async insertUser({
     email,
     dni_usuario,

@@ -34,7 +34,6 @@ export class UserController {
       if (exist) {
         return res.status(400).json({ message: 'Usuario ya existe.' });
       }
-      
     } catch (err) {
       next(err);
     }
@@ -70,6 +69,14 @@ export class UserController {
     try {
       await UserModel.activateUser(hash_id);
       return res.status(200).send('Usuario activado.');
+    } catch (err) {
+      next(err);
+    }
+  }
+  static async getUserType(req, res, next) {
+    try {
+      const userType = await UserModel.getUserType();
+      return res.json(userType);
     } catch (err) {
       next(err);
     }
