@@ -4,11 +4,13 @@ import s3 from '../configs/s3.js';
 import { FileModel } from '../models/file.model.js';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { ReportModel } from '../models/report.model.js';
+import { UnsupportedMediaTypeError } from '../errors/errors.js';
 
 export class FileControlller {
   static async uploadFile(req, res, next) {
     try {
-      const { userId, patientDni, reportId } = req.body;
+      const { userId, reportId, titulo, descripcion } = req.body;
+      const { dni_paciente } = req;
       const { files } = req;
 
       if (!files) throw new Error('No se encontraron archivos para subir');
@@ -28,9 +30,11 @@ export class FileControlller {
           throw new UnsupportedMediaTypeError('Tipo de archivo no permitido');
       });
 
+      const uploadedFiles = [];
+
       await Promise.all(
         filesArray.map(async (file) => {
-          const fileKey = `uploads/${patientDni}/${Date.now()}_${file.name}`; // nombre único
+          const fileKey = `uploads/${dni_paciente}/${Date.now()}_${file.name}`; // nombre único
 
           // Sube a S3
           const uploadParams = {
@@ -48,28 +52,49 @@ export class FileControlller {
 
           // Guarda la ruta (fileUrl) en la base de datos
           const fileId = await FileModel.insertFile(
-            patientDni,
+            dni_paciente,
             userId,
             fileUrl,
             file.name,
             file.mimetype,
             fileKey,
+            titulo || null,
+            descripcion || null,
           );
           if (reportId) {
             await ReportModel.addFileReport(reportId, fileId);
           }
+
+          uploadedFiles.push({
+            fileId: fileId,
+            fileName: file.name,
+            fileType: file.mimetype,
+            fileUrl: fileUrl,
+          });
         }),
       );
 
-      return res.status(201).end();
+      // Respuesta detallada para peticiones desde FHIR
+      const response = {
+        success: true,
+        message: 'Archivos procesados exitosamente desde FHIR',
+        patientDni: dni_paciente,
+        userId: userId,
+        reportId: reportId,
+        uploadedFiles: uploadedFiles,
+      };
+      return res.status(201).json(response);
     } catch (err) {
       next(err);
     }
   }
   static async getFiles(req, res, next) {
     try {
-      const { patientDni, fileType } = req.query;
-      const files = await FileModel.getFiles(patientDni, fileType);
+      const { fileType } = req.query;
+      const { dni_paciente } = req;
+
+      const tipoArchivo = fileType || undefined;
+      const files = await FileModel.getFiles(dni_paciente, tipoArchivo);
 
       const signedFiles = await Promise.all(
         files.map(async (file) => {
@@ -79,13 +104,17 @@ export class FileControlller {
           });
 
           const url = await getSignedUrl(s3, command, {
-            expiresIn: 60 * 10, //* 10 minutos
+            expiresIn: 60 * 10, // 10 minutos
           });
 
           return {
+            id: file.id_documento,
             name: file.nombre,
             type: file.tipo_archivo,
             url,
+            titulo: file.titulo || null,
+            descripcion: file.descripcion || null,
+            fechaCreacion: file.fecha_creacion || null,
           };
         }),
       );
