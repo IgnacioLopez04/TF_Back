@@ -5,10 +5,11 @@ export class PatientModel {
   static async getPatient(hash_id) {
     try {
       const res = await pool.query(
-        ` SELECT paciente.*,prestacion.nombre as prestacion, historia_clinica.hash_id as hash_id_EHR
+        ` SELECT paciente.*,prestacion.nombre as prestacion, historia_clinica.hash_id as hash_id_EHR, ciudad.id_provincia as id_provincia
           FROM paciente
           INNER JOIN prestacion ON prestacion.id_prestacion = paciente.id_prestacion 
           INNER JOIN historia_clinica ON historia_clinica.dni_paciente = paciente.dni_paciente
+          INNER JOIN ciudad ON ciudad.id_ciudad = paciente.id_ciudad
           WHERE paciente.hash_id = $1`,
         [hash_id],
       );

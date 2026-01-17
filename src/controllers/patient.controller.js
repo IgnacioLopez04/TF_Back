@@ -11,6 +11,10 @@ export class PatientController {
 
     try {
       const result = await PatientModel.getPatient(hash_id);
+
+      if (!result) {
+        throw new NotFoundError('Paciente no encontrado');
+      }
       return res.json(result);
     } catch (err) {
       next(err);
