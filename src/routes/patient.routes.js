@@ -9,6 +9,7 @@ const router = Router();
 // ! localhost:3000/api/patient
 
 router.get('/:hash_id', getPatientDni, PatientController.getPatient);
+router.put('/:hash_id', getPatientDni, PatientController.updatePatient);
 router.delete(
   '/delete/:hash_id',
   getPatientDni,
