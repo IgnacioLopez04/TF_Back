@@ -35,19 +35,22 @@ export class PatientModel {
     }
   }
 
-  static async getPatients() {
+  static async getPatients(includeInactive = false) {
     try {
-      const patients = await pool.query(
-        `
+      let query = `
           SELECT paciente.nombre, paciente.apellido, paciente.dni_paciente, prestacion.nombre as prestacion, paciente.hash_id,
-            paciente.ocupacion_actual, paciente.ocupacion_anterior,
+            paciente.ocupacion_actual, paciente.ocupacion_anterior, paciente.inactivo,
             (SELECT id_mutual FROM dato_mutual WHERE dato_mutual.dni_paciente = paciente.dni_paciente ORDER BY id_datos_mutual LIMIT 1) AS id_mutual,
             (SELECT numero_afiliado FROM dato_mutual WHERE dato_mutual.dni_paciente = paciente.dni_paciente ORDER BY id_datos_mutual LIMIT 1) AS numero_afiliado
           FROM paciente
           INNER JOIN prestacion ON prestacion.id_prestacion = paciente.id_prestacion
-          WHERE paciente.inactivo = false
-        `,
-      );
+      `;
+
+      if (!includeInactive) {
+        query += ` WHERE paciente.inactivo = false`;
+      }
+
+      const patients = await pool.query(query);
       return patients.rows;
     } catch (err) {
       throw new InternalServerError('Error al obtener los pacientes.');

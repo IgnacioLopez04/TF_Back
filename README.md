@@ -72,10 +72,25 @@ npm run dev
 | Recurso         | Método | Ruta                             | Descripción                        |
 |-----------------|--------|----------------------------------|------------------------------------|
 | Usuarios        | GET    | `/api/usuarios`                  | Listado de usuarios                |
+| Pacientes       | GET    | `/api/patient`                   | Listado de pacientes               |
 | Pacientes       | POST   | `/api/pacientes`                 | Alta de paciente                   |
 | Profesionales   | PUT    | `/api/profesionales/:id`         | Modificación de datos              |
 | Documentos      | POST   | `/api/documentos`                | Subida de archivo con metadata     |
 | Documentos      | GET    | `/api/pacientes/:id/documentos`  | Listado de archivos de un paciente |
+
+### Endpoint GET `/api/patient`
+
+Obtiene la lista de pacientes. Por defecto, solo devuelve pacientes activos (`inactivo = false`).
+
+**Parámetros de consulta:**
+- `includeInactive` (opcional): Si es `'true'`, incluye pacientes inactivos en la respuesta.
+
+**Ejemplos:**
+- `GET /api/patient` - Devuelve solo pacientes activos
+- `GET /api/patient?includeInactive=true` - Devuelve todos los pacientes (activos e inactivos)
+
+**Respuesta:**
+Cada paciente incluye el campo `inactivo` (boolean) que indica si el paciente está inactivo. El servidor FHIR mapea este campo al campo estándar FHIR `Patient.active` (`active = !inactivo`).
 
 ---
 

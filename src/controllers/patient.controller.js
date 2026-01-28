@@ -55,7 +55,8 @@ export class PatientController {
 
   static async getPatients(req, res, next) {
     try {
-      const patients = await PatientModel.getPatients();
+      const includeInactive = req.query.includeInactive === 'true';
+      const patients = await PatientModel.getPatients(includeInactive);
       return res.json(patients);
     } catch (err) {
       next(err);
