@@ -27,21 +27,24 @@ export class PatientController {
       }
 
       // Obtener tutores del paciente (puede retornar array vacío si no hay tutores)
-      const tutores = await TutorModel.getTutoresByDniPaciente(result.dni_paciente);
-      
+      const tutores = await TutorModel.getTutoresByDniPaciente(
+        result.dni_paciente,
+      );
+
       // Mapear tutores al formato esperado por el frontend
       // Si no hay tutores, tutores será un array vacío [] y tutoresMapeados también será []
-      const tutoresMapeados = tutores && tutores.length > 0
-        ? tutores.map(tutor => ({
-            nombre: tutor.nombre,
-            dni: tutor.dni,
-            fechaNacimiento: tutor.fecha_nacimiento,
-            ocupacion: tutor.ocupacion,
-            lugarNacimiento: tutor.lugar_nacimiento,
-            relacion: tutor.relacion,
-            convive: tutor.convive
-          }))
-        : [];
+      const tutoresMapeados =
+        tutores && tutores.length > 0
+          ? tutores.map((tutor) => ({
+              nombre: tutor.nombre,
+              dni: tutor.dni,
+              fechaNacimiento: tutor.fecha_nacimiento,
+              ocupacion: tutor.ocupacion,
+              lugarNacimiento: tutor.lugar_nacimiento,
+              relacion: tutor.relacion,
+              convive: tutor.convive,
+            }))
+          : [];
 
       // Agregar tutores al resultado (será [] si no hay tutores)
       result.tutores = tutoresMapeados;
@@ -76,7 +79,8 @@ export class PatientController {
         piso_departamento: data.piso_departamento || null,
         vive_con: data.vive_con || null,
         ocupacion_actual: data.ocupacion_actual ?? data.ocupacionActual ?? null,
-        ocupacion_anterior: data.ocupacion_anterior ?? data.ocupacionAnterior ?? null,
+        ocupacion_anterior:
+          data.ocupacion_anterior ?? data.ocupacionAnterior ?? null,
       });
 
       const id_mutual = data.id_mutual ?? data.mutual;
@@ -122,6 +126,27 @@ export class PatientController {
       return res.status(200).json({ message: 'Paciente eliminado.' });
     } catch (error) {
       next(error);
+    }
+  }
+
+  static async reactivatePatient(req, res, next) {
+    const rawHashId = req.params.hash_id;
+    if (!rawHashId) {
+      return next(
+        new BadRequestError('Hash ID del paciente no proporcionado.'),
+      );
+    }
+    const hash_id = cleanHashId(rawHashId);
+
+    try {
+      const rowCount = await PatientModel.reactivatePatient(hash_id);
+      if (rowCount === 0) {
+        throw new NotFoundError('Paciente no encontrado.');
+      }
+      return res.status(200).json({ message: 'Paciente reactivado.' });
+    } catch (err) {
+      if (err instanceof NotFoundError) return next(err);
+      next(err);
     }
   }
 

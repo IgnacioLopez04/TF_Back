@@ -38,6 +38,17 @@ export class EHRModel {
       throw new InternalServerError('Error al obtener EHR');
     }
   }
+  static async getEHRByIdHistoriaClinica(id_historia_clinica) {
+    const query =
+      'SELECT * FROM historia_clinica WHERE id_historia_clinica = $1';
+    const values = [id_historia_clinica];
+    try {
+      const { rows } = await pool.query(query, values);
+      return rows[0] ?? null;
+    } catch (err) {
+      throw new InternalServerError('Error al obtener EHR');
+    }
+  }
   static async getEHR(hashId) {
     //! Temgo que obtener la historia completa, la fisiatrica y los informes
     //! Ver tabla informes, capaz necesito utilizar el id_historia_clinica

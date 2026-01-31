@@ -1,6 +1,7 @@
 import { GetObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3';
 import { AWS_REGION, AWS_S3_BUCKET_NAME } from '../configs/config.js';
 import s3 from '../configs/s3.js';
+import { EHRModel } from '../models/ehr.model.js';
 import { FileModel } from '../models/file.model.js';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { ReportModel } from '../models/report.model.js';
@@ -73,6 +74,11 @@ export class FileControlller {
           });
         }),
       );
+
+      const ehr = await EHRModel.getEHRByDNI(dni_paciente);
+      if (ehr) {
+        await EHRModel.updateModificationDate(ehr.hash_id);
+      }
 
       // Respuesta detallada para peticiones desde FHIR
       const response = {

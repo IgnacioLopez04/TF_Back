@@ -4,9 +4,8 @@ import { createHashId } from '../utils/encrypt.js';
 export class PatientModel {
   static async getPatient(hash_id) {
     try {
-      console.log(hash_id);
       const res = await pool.query(
-        ` SELECT paciente.*,prestacion.nombre as prestacion, historia_clinica.hash_id as hash_id_EHR, ciudad.id_provincia as id_provincia
+        ` SELECT paciente.*,prestacion.nombre as prestacion, historia_clinica.hash_id as hash_id_EHR, historia_clinica.fecha_modificacion, ciudad.id_provincia as id_provincia
           FROM paciente
           INNER JOIN prestacion ON prestacion.id_prestacion = paciente.id_prestacion 
           INNER JOIN historia_clinica ON historia_clinica.dni_paciente = paciente.dni_paciente
@@ -14,7 +13,6 @@ export class PatientModel {
           WHERE paciente.hash_id = $1`,
         [hash_id],
       );
-      console.log(res.rows[0]);
       return res.rows[0];
     } catch (e) {
       if (e instanceof InternalServerError) throw e;
@@ -40,10 +38,12 @@ export class PatientModel {
       let query = `
           SELECT paciente.nombre, paciente.apellido, paciente.dni_paciente, prestacion.nombre as prestacion, paciente.hash_id,
             paciente.ocupacion_actual, paciente.ocupacion_anterior, paciente.inactivo,
+            historia_clinica.fecha_modificacion,
             (SELECT id_mutual FROM dato_mutual WHERE dato_mutual.dni_paciente = paciente.dni_paciente ORDER BY id_datos_mutual LIMIT 1) AS id_mutual,
             (SELECT numero_afiliado FROM dato_mutual WHERE dato_mutual.dni_paciente = paciente.dni_paciente ORDER BY id_datos_mutual LIMIT 1) AS numero_afiliado
           FROM paciente
           INNER JOIN prestacion ON prestacion.id_prestacion = paciente.id_prestacion
+          INNER JOIN historia_clinica ON historia_clinica.dni_paciente = paciente.dni_paciente
       `;
 
       if (!includeInactive) {
@@ -127,6 +127,18 @@ export class PatientModel {
       );
     } catch (err) {
       throw new InternalServerError('Error al eliminar el paciente.');
+    }
+  }
+
+  static async reactivatePatient(hash_id) {
+    try {
+      const result = await pool.query(
+        'UPDATE paciente SET inactivo = false WHERE hash_id = $1',
+        [hash_id],
+      );
+      return result.rowCount;
+    } catch (err) {
+      throw new InternalServerError('Error al reactivar el paciente.');
     }
   }
 
