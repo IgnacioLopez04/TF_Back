@@ -18,8 +18,14 @@ export class PatientSchema {
     id_ciudad: z.string().optional(),
     barrio: z.string().optional(),
     calle: z.string().optional(),
+    numero: z.string().optional(),
     id_prestacion: z.string().optional(),
     piso_departamento: z.string().optional(),
+    vive_con: z.string().optional(),
+    id_mutual: z.union([z.number(), z.string()]).optional(),
+    numero_afiliado: z.string().optional(),
+    ocupacion_actual: z.string().optional(),
+    ocupacion_anterior: z.string().optional(),
     tutores: z
       .array(
         z.object({

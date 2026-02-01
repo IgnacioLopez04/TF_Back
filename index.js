@@ -26,8 +26,9 @@ app.use(
 app.use(
   fileUpload({
     useTempFiles: false,
-    limits: { fileSize: 10 * 1024 * 1024 }, //* límite de 10MB (ajustable)
+    limits: { fileSize: 50 * 1024 * 1024 }, //* límite de 50MB (ajustable)
     abortOnLimit: true,
+    parseNested: true,
   }),
 );
 app.use(express.json());

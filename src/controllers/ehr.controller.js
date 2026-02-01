@@ -16,6 +16,7 @@ export class EHRController {
       }
 
       await EHRModel.createHCFisiatric(ehr.id_historia_clinica, hc_fisiatric);
+      await EHRModel.updateModificationDate(ehr.hash_id);
       return res
         .status(201)
         .json({ message: 'HC Fisiatric creada exitosamente.' });

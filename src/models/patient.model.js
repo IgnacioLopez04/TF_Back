@@ -5,10 +5,11 @@ export class PatientModel {
   static async getPatient(hash_id) {
     try {
       const res = await pool.query(
-        ` SELECT paciente.*,prestacion.nombre as prestacion, historia_clinica.hash_id as hash_id_EHR
+        ` SELECT paciente.*,prestacion.nombre as prestacion, historia_clinica.hash_id as hash_id_EHR, historia_clinica.fecha_modificacion, ciudad.id_provincia as id_provincia
           FROM paciente
           INNER JOIN prestacion ON prestacion.id_prestacion = paciente.id_prestacion 
           INNER JOIN historia_clinica ON historia_clinica.dni_paciente = paciente.dni_paciente
+          INNER JOIN ciudad ON ciudad.id_ciudad = paciente.id_ciudad
           WHERE paciente.hash_id = $1`,
         [hash_id],
       );
@@ -32,16 +33,24 @@ export class PatientModel {
     }
   }
 
-  static async getPatients() {
+  static async getPatients(includeInactive = false) {
     try {
-      const patients = await pool.query(
-        `
-          SELECT paciente.nombre, paciente.apellido, paciente.dni_paciente, prestacion.nombre as prestacion, paciente.hash_id
+      let query = `
+          SELECT paciente.nombre, paciente.apellido, paciente.dni_paciente, prestacion.nombre as prestacion, paciente.hash_id,
+            paciente.ocupacion_actual, paciente.ocupacion_anterior, paciente.inactivo,
+            historia_clinica.fecha_modificacion,
+            (SELECT id_mutual FROM dato_mutual WHERE dato_mutual.dni_paciente = paciente.dni_paciente ORDER BY id_datos_mutual LIMIT 1) AS id_mutual,
+            (SELECT numero_afiliado FROM dato_mutual WHERE dato_mutual.dni_paciente = paciente.dni_paciente ORDER BY id_datos_mutual LIMIT 1) AS numero_afiliado
           FROM paciente
           INNER JOIN prestacion ON prestacion.id_prestacion = paciente.id_prestacion
-          WHERE paciente.inactivo = false
-        `,
-      );
+          INNER JOIN historia_clinica ON historia_clinica.dni_paciente = paciente.dni_paciente
+      `;
+
+      if (!includeInactive) {
+        query += ` WHERE paciente.inactivo = false`;
+      }
+
+      const patients = await pool.query(query);
       return patients.rows;
     } catch (err) {
       throw new InternalServerError('Error al obtener los pacientes.');
@@ -56,9 +65,13 @@ export class PatientModel {
     id_ciudad,
     barrio_paciente,
     calle_paciente,
+    numero_calle,
     telefono,
     id_prestacion,
     piso_departamento,
+    vive_con,
+    ocupacion_actual,
+    ocupacion_anterior,
   }) {
     try {
       const patient = await pool.query(
@@ -72,15 +85,15 @@ export class PatientModel {
             [dni_paciente],
           );
         }
-        return;
+        return { inserted: false };
       }
 
       const hash_id = createHashId(
         dni_paciente + nombre_paciente + apellido_paciente + fecha_nacimiento,
       );
 
-      const res = await pool.query(
-        'INSERT INTO paciente(dni_paciente, nombre, apellido, fecha_nacimiento, id_ciudad, barrio, calle, telefono, id_prestacion, piso_departamento, inactivo, hash_id) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)',
+      await pool.query(
+        'INSERT INTO paciente(dni_paciente, nombre, apellido, fecha_nacimiento, id_ciudad, barrio, calle, numero_calle, telefono, id_prestacion, piso_departamento, inactivo, hash_id, vive_con, ocupacion_actual, ocupacion_anterior) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)',
         [
           dni_paciente,
           nombre_paciente,
@@ -89,13 +102,18 @@ export class PatientModel {
           id_ciudad,
           barrio_paciente,
           calle_paciente,
+          numero_calle,
           telefono,
           id_prestacion,
           piso_departamento,
           false,
           hash_id,
+          vive_con,
+          ocupacion_actual ?? null,
+          ocupacion_anterior ?? null,
         ],
       );
+      return { inserted: true };
     } catch (err) {
       throw new InternalServerError('Error al crear el paciente.');
     }
@@ -112,6 +130,18 @@ export class PatientModel {
     }
   }
 
+  static async reactivatePatient(hash_id) {
+    try {
+      const result = await pool.query(
+        'UPDATE paciente SET inactivo = false WHERE hash_id = $1',
+        [hash_id],
+      );
+      return result.rowCount;
+    } catch (err) {
+      throw new InternalServerError('Error al reactivar el paciente.');
+    }
+  }
+
   static async updatePatient({
     dni_paciente,
     nombre_paciente,
@@ -120,14 +150,17 @@ export class PatientModel {
     id_ciudad,
     barrio_paciente,
     calle_paciente,
+    numero_calle,
     telefono,
     id_prestacion,
     piso_departamento,
+    ocupacion_actual,
+    ocupacion_anterior,
     dni_paciente_viejo,
   }) {
     try {
-      const response = await pool.query(
-        'UPDATE paciente SET dni_paciente=$1, nombre=$2, apellido=$3, fecha_nacimiento=$4, id_ciudad=$5, barrio=$6, calle=$7, telefono=$8, id_prestacion=$9, piso_departamento=$10 WHERE dni_paciente=$11',
+      await pool.query(
+        'UPDATE paciente SET dni_paciente=$1, nombre=$2, apellido=$3, fecha_nacimiento=$4, id_ciudad=$5, barrio=$6, calle=$7, numero_calle=$8, telefono=$9, id_prestacion=$10, piso_departamento=$11, ocupacion_actual=$12, ocupacion_anterior=$13 WHERE dni_paciente=$14',
         [
           dni_paciente,
           nombre_paciente,
@@ -136,9 +169,12 @@ export class PatientModel {
           id_ciudad,
           barrio_paciente,
           calle_paciente,
+          numero_calle,
           telefono,
           id_prestacion,
           piso_departamento,
+          ocupacion_actual ?? null,
+          ocupacion_anterior ?? null,
           dni_paciente_viejo,
         ],
       );

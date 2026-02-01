@@ -65,6 +65,52 @@ export class GeneralModel {
       throw new InternalServerError('Error al obtener las prestaciones.');
     }
   }
+  static async insertDatosMutual({ id_mutual, dni_paciente, numero_afiliado }) {
+    try {
+      await pool.query(
+        'INSERT INTO dato_mutual (id_mutual, dni_paciente, numero_afiliado) VALUES ($1, $2, $3)',
+        [id_mutual, dni_paciente, numero_afiliado],
+      );
+    } catch (error) {
+      throw new InternalServerError('Error al insertar los datos de la mutual.');
+    }
+  }
+  static async getDatosMutualByDniPaciente(dni_paciente) {
+    try {
+      const { rows } = await pool.query(
+        'SELECT id_mutual, numero_afiliado FROM dato_mutual WHERE dni_paciente = $1 ORDER BY id_datos_mutual LIMIT 1',
+        [dni_paciente],
+      );
+      return rows[0] || null;
+    } catch (error) {
+      throw new InternalServerError('Error al obtener los datos de la mutual.');
+    }
+  }
+  static async upsertDatosMutual(dni_paciente, id_mutual, numero_afiliado) {
+    try {
+      const r = await pool.query(
+        'UPDATE dato_mutual SET id_mutual = $1, numero_afiliado = $2 WHERE dni_paciente = $3',
+        [id_mutual, numero_afiliado, dni_paciente],
+      );
+      if (r.rowCount === 0) {
+        await pool.query(
+          'INSERT INTO dato_mutual (id_mutual, dni_paciente, numero_afiliado) VALUES ($1, $2, $3)',
+          [id_mutual, dni_paciente, numero_afiliado],
+        );
+      }
+    } catch (error) {
+      throw new InternalServerError('Error al actualizar los datos de la mutual.');
+    }
+  }
+  static async deleteDatosMutualByDniPaciente(dni_paciente) {
+    try {
+      await pool.query('DELETE FROM dato_mutual WHERE dni_paciente = $1', [
+        dni_paciente,
+      ]);
+    } catch (error) {
+      throw new InternalServerError('Error al eliminar los datos de la mutual.');
+    }
+  }
 }
 
 export class TutorModel {
@@ -85,6 +131,18 @@ export class TutorModel {
       );
     } catch (error) {
       throw new InternalServerError('Error al insertar el tutor.');
+    }
+  }
+
+  static async getTutoresByDniPaciente(dni_paciente) {
+    try {
+      const { rows } = await pool.query(
+        'SELECT dni, nombre, fecha_nacimiento, ocupacion, relacion, convive, lugar_nacimiento FROM tutor WHERE dni_paciente = $1 ORDER BY id_tutor',
+        [dni_paciente]
+      );
+      return rows;
+    } catch (error) {
+      throw new InternalServerError('Error al obtener los tutores.');
     }
   }
 }

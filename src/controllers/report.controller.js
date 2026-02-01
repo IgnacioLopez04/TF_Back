@@ -49,12 +49,13 @@ export class ReportController {
     const hashId = createHashId(`${report.id_informe}${userId}${text}`);
 
     try {
-      const annex = await ReportModel.insertAnnex(
-        report.id_informe,
-        userId,
-        text,
-        hashId,
+      await ReportModel.insertAnnex(report.id_informe, userId, text, hashId);
+      const ehr = await EHRModel.getEHRByIdHistoriaClinica(
+        report.id_historia_clinica,
       );
+      if (ehr) {
+        await EHRModel.updateModificationDate(ehr.hash_id);
+      }
       return res.status(201).end();
     } catch (err) {
       next(err);

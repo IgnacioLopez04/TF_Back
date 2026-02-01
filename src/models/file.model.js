@@ -1,5 +1,5 @@
 import { pool } from '../configs/config.js';
-import { DefaultError } from '../errors/errors.js';
+import { DefaultError, InternalServerError } from '../errors/errors.js';
 
 export class FileModel {
   static async insertMedicalFile(
@@ -38,11 +38,22 @@ export class FileModel {
     nombre,
     tipo_archivo,
     fileKey,
+    titulo,
+    descripcion,
   ) {
     try {
       const file = await pool.query(
-        `INSERT INTO documento (dni_paciente, id_usuario, path, nombre, tipo_archivo, key) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id_documento`,
-        [dni_paciente, id_usuario, path, nombre, tipo_archivo, fileKey],
+        `INSERT INTO documento (dni_paciente, id_usuario, path, nombre, tipo_archivo, key, titulo, descripcion) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id_documento`,
+        [
+          dni_paciente,
+          id_usuario,
+          path,
+          nombre,
+          tipo_archivo,
+          fileKey,
+          titulo,
+          descripcion,
+        ],
       );
       return file.rows[0].id_documento;
     } catch (err) {
@@ -51,10 +62,20 @@ export class FileModel {
   }
   static async getFiles(dni_paciente, tipo_archivo) {
     try {
-      const files = await pool.query(
-        `SELECT * FROM documento WHERE dni_paciente=$1 AND tipo_archivo=$2`,
-        [dni_paciente, tipo_archivo],
-      );
+      let query;
+      let params;
+
+      // Si tipo_archivo es null o undefined, obtener todos los documentos
+      if (tipo_archivo === null || tipo_archivo === undefined) {
+        query = `SELECT * FROM documento WHERE dni_paciente=$1 ORDER BY id_documento DESC`;
+        params = [dni_paciente];
+      } else {
+        // Si se proporciona tipo_archivo, filtrar por tipo
+        query = `SELECT * FROM documento WHERE dni_paciente=$1 AND tipo_archivo=$2 ORDER BY id_documento DESC`;
+        params = [dni_paciente, tipo_archivo];
+      }
+
+      const files = await pool.query(query, params);
       return files.rows;
     } catch (err) {
       throw new InternalServerError('Error al recuperar los documentos.');
