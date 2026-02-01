@@ -2,7 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import fileUpload from 'express-fileupload';
 import { errorHandler } from './src/middlewares/errors.middleware.js';
-import { PORT } from './src/configs/config.js';
+import { PORT, ALLOWED_CORS } from './src/configs/config.js';
 import { validateToken } from './src/utils/token.js';
 import { router as apiRouter } from './src/routes/index.routes.js';
 import { router as authRouter } from './src/routes/auth.routes.js';
@@ -14,15 +14,12 @@ const swaggerDocument = YAML.load('./docs/swagger.yaml');
 const app = express();
 
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
-app.use(
-  cors({
-    origin: [
-      'http://localhost:5173',
-      'http://localhost:8080',
-      'http://localhost:8081',
-    ],
-  }),
-);
+const corsOrigins = ALLOWED_CORS
+  ? ALLOWED_CORS.split(',')
+      .map((s) => s.trim())
+      .filter(Boolean)
+  : ['http://localhost:5173', 'http://localhost:8080', 'http://localhost:8081'];
+app.use(cors({ origin: corsOrigins }));
 app.use(
   fileUpload({
     useTempFiles: false,
