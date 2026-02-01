@@ -31,6 +31,11 @@ app.use(
 app.use(express.json());
 app.disable('x-powered-by');
 
+app.use((req, res, next) => {
+  console.log(`[REQUEST] ${req.method} ${req.path}`);
+  next();
+});
+
 app.use('/auth', authRouter);
 
 app.use(validateToken);
