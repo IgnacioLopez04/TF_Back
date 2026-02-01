@@ -6,17 +6,25 @@ const { Pool } = pg;
 
 dotenv.config();
 
+const poolConfig = process.env.DATABASE_URL
+  ? {
+      connectionString: process.env.DATABASE_URL,
+      ssl: { rejectUnauthorized: false },
+    }
+  : {
+      host: process.env.DB_HOST,
+      user: process.env.DB_USER,
+      port: process.env.DB_PORT,
+      password: process.env.DB_PASSWORD,
+      database: process.env.DB,
+    };
+
+export const pool = new Pool(poolConfig);
+
 export const {
   PORT = process.env.PORT,
   SALT_ROUNDS = process.env.SALT_ROUNDS,
   TOKEN_SECRET = process.env.TOKEN_SECRET,
-  pool = new Pool({
-    host: process.env.DB_HOST,
-    user: process.env.DB_USER,
-    port: process.env.DB_PORT,
-    password: process.env.DB_PASSWORD,
-    database: process.env.DB,
-  }),
   PATH_FILES = process.env.PATH_FILES,
   AWS_ACCESS_KEY_ID = process.env.AWS_ACCESS_KEY_ID,
   AWS_SECRET_ACCESS_KEY = process.env.AWS_SECRET_ACCESS_KEY,
