@@ -7,6 +7,11 @@ const router = Router();
 
 router.post('/hc-fisiatric', getPatientDni, EHRController.hcFisiatric);
 router.get(
+  '/hc-fisiatric/:hash_id/history',
+  getPatientDni,
+  EHRController.getHCFisiatricHistory,
+);
+router.get(
   '/hc-fisiatric/:hash_id',
   getPatientDni,
   EHRController.getHCFisiatric,

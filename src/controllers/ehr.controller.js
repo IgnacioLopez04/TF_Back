@@ -15,7 +15,15 @@ export class EHRController {
           .json({ message: 'Datos de HC Fisiatric no proporcionados.' });
       }
 
-      await EHRModel.createHCFisiatric(ehr.id_historia_clinica, hc_fisiatric);
+      const current = await EHRModel.getHCFisiatric(ehr.id_historia_clinica);
+      if (current) {
+        await EHRModel.createNewVersionHCFisiatric(
+          ehr.id_historia_clinica,
+          hc_fisiatric,
+        );
+      } else {
+        await EHRModel.createHCFisiatric(ehr.id_historia_clinica, hc_fisiatric);
+      }
       await EHRModel.updateModificationDate(ehr.hash_id);
       return res
         .status(201)
@@ -53,6 +61,32 @@ export class EHRController {
       };
 
       return res.status(200).json(hc_fisiatric_response);
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  static getHCFisiatricHistory = async (req, res, next) => {
+    try {
+      const ehr = await EHRModel.getEHRByDNI(req.dni_paciente);
+      if (!ehr) {
+        return res.status(404).json({ message: 'EHR no encontrado.' });
+      }
+
+      const history = await EHRModel.getHCFisiatricHistory(
+        ehr.id_historia_clinica,
+      );
+
+      const historyResponse = history.map((row) => ({
+        ...row,
+        evaluacion_consulta: JSON.stringify(row.evaluacion_consulta),
+        antecedentes: JSON.stringify(row.antecedentes),
+        anamnesis_sistemica: JSON.stringify(row.anamnesis_sistemica),
+        examen_fisico: JSON.stringify(row.examen_fisico),
+        diagnostico_funcional: JSON.stringify(row.diagnostico_funcional),
+      }));
+
+      return res.status(200).json(historyResponse);
     } catch (err) {
       next(err);
     }
