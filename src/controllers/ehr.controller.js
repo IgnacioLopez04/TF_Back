@@ -16,6 +16,9 @@ export class EHRController {
       }
 
       const current = await EHRModel.getHCFisiatric(ehr.id_historia_clinica);
+
+      console.log('current', current);
+      console.log('hc_fisiatric', hc_fisiatric);
       if (current) {
         await EHRModel.createNewVersionHCFisiatric(
           ehr.id_historia_clinica,
@@ -58,7 +61,13 @@ export class EHRController {
         diagnostico_funcional: JSON.stringify(
           hc_fisiatric.diagnostico_funcional,
         ),
+        fisiologico:
+          hc_fisiatric.fisiologico != null
+            ? JSON.stringify(hc_fisiatric.fisiologico)
+            : null,
       };
+
+      console.log(hc_fisiatric_response);
 
       return res.status(200).json(hc_fisiatric_response);
     } catch (err) {
@@ -84,6 +93,8 @@ export class EHRController {
         anamnesis_sistemica: JSON.stringify(row.anamnesis_sistemica),
         examen_fisico: JSON.stringify(row.examen_fisico),
         diagnostico_funcional: JSON.stringify(row.diagnostico_funcional),
+        fisiologico:
+          row.fisiologico != null ? JSON.stringify(row.fisiologico) : null,
       }));
 
       return res.status(200).json(historyResponse);
