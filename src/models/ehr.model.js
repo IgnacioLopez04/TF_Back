@@ -75,17 +75,25 @@ export class EHRModel {
       diagnosticoFuncional,
     } = hcFisiatric;
 
+    const fisiologico = antecedentes?.fisiologico ?? null;
+    const antecedentesSinFisiologico =
+      antecedentes && typeof antecedentes === 'object'
+        ? { ...antecedentes }
+        : {};
+    delete antecedentesSinFisiologico.fisiologico;
+
     const query = `INSERT INTO hc_fisiatrica (
       id_historia_clinica, version_number, effective_from, effective_to, is_current,
-      evaluacion_consulta, antecedentes, anamnesis_sistemica, examen_fisico, diagnostico_funcional
-    ) VALUES ($1, 1, CURRENT_TIMESTAMP, NULL, TRUE, $2, $3, $4, $5, $6) RETURNING *`;
+      evaluacion_consulta, antecedentes, anamnesis_sistemica, examen_fisico, diagnostico_funcional, fisiologico
+    ) VALUES ($1, 1, CURRENT_TIMESTAMP, NULL, TRUE, $2, $3, $4, $5, $6, $7) RETURNING *`;
     const values = [
       ehrId,
       JSON.stringify(evaluacionConsulta),
-      JSON.stringify(antecedentes),
+      JSON.stringify(antecedentesSinFisiologico),
       JSON.stringify(anamnesisSistemica),
       JSON.stringify(examenFisico),
       JSON.stringify(diagnosticoFuncional),
+      fisiologico == null ? null : JSON.stringify(fisiologico),
     ];
     try {
       const { rows } = await pool.query(query, values);
@@ -134,10 +142,18 @@ export class EHRModel {
       examenFisico: payload.examenFisico ?? currentRow.examen_fisico,
       diagnosticoFuncional:
         payload.diagnosticoFuncional ?? currentRow.diagnostico_funcional,
+      fisiologico:
+        payload.antecedentes?.fisiologico ?? currentRow.fisiologico ?? null,
     });
 
     const merged = merge(current, hcFisiatric || {});
     const nextVersion = current.version_number + 1;
+
+    const antecedentesSinFisiologico =
+      merged.antecedentes && typeof merged.antecedentes === 'object'
+        ? { ...merged.antecedentes }
+        : {};
+    delete antecedentesSinFisiologico.fisiologico;
 
     const client = await pool.connect();
     try {
@@ -149,16 +165,17 @@ export class EHRModel {
       );
       const insertQuery = `INSERT INTO hc_fisiatrica (
         id_historia_clinica, version_number, effective_from, effective_to, is_current,
-        evaluacion_consulta, antecedentes, anamnesis_sistemica, examen_fisico, diagnostico_funcional
-      ) VALUES ($1, $2, CURRENT_TIMESTAMP, NULL, TRUE, $3, $4, $5, $6, $7) RETURNING *`;
+        evaluacion_consulta, antecedentes, anamnesis_sistemica, examen_fisico, diagnostico_funcional, fisiologico
+      ) VALUES ($1, $2, CURRENT_TIMESTAMP, NULL, TRUE, $3, $4, $5, $6, $7, $8) RETURNING *`;
       const insertValues = [
         ehrId,
         nextVersion,
         JSON.stringify(merged.evaluacionConsulta),
-        JSON.stringify(merged.antecedentes),
+        JSON.stringify(antecedentesSinFisiologico),
         JSON.stringify(merged.anamnesisSistemica),
         JSON.stringify(merged.examenFisico),
         JSON.stringify(merged.diagnosticoFuncional),
+        merged.fisiologico == null ? null : JSON.stringify(merged.fisiologico),
       ];
       const { rows } = await client.query(insertQuery, insertValues);
       await client.query('COMMIT');
