@@ -38,6 +38,10 @@ app.use((req, res, next) => {
 
 app.use('/auth', authRouter);
 
+app.get('/health', (req, res) => {
+  res.status(200).json({ ok: true });
+});
+
 app.use(validateToken);
 app.use('/api', apiRouter);
 app.use((req, res, next) => {
