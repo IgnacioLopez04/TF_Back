@@ -32,7 +32,6 @@ app.use(express.json());
 app.disable('x-powered-by');
 
 app.use((req, res, next) => {
-  console.log(`[REQUEST] ${req.method} ${req.path}`);
   next();
 });
 
@@ -52,9 +51,8 @@ app.use(errorHandler);
 
 const port = Number(PORT) || 3000;
 app.listen(port, () => {
-  console.log('El servidor corre en el puerto: ', port);
   pool
     .query('SELECT 1')
-    .then(() => console.log('[BD] Conexión establecida'))
+    .then(() => {})
     .catch((err) => console.error('[BD] Error conectando:', err.message));
 });
