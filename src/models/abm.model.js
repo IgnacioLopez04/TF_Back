@@ -19,7 +19,6 @@ export class UbicacionModel {
         [id_ciudad, nombre, id_provincia],
       );
     } catch (error) {
-      console.log(error);
       throw new InternalServerError('Error al cargar la ciudad.');
     }
   }

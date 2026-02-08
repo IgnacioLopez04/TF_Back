@@ -17,8 +17,6 @@ export class EHRController {
 
       const current = await EHRModel.getHCFisiatric(ehr.id_historia_clinica);
 
-      console.log('current', current);
-      console.log('hc_fisiatric', hc_fisiatric);
       if (current) {
         await EHRModel.createNewVersionHCFisiatric(
           ehr.id_historia_clinica,
@@ -66,8 +64,6 @@ export class EHRController {
             ? JSON.stringify(hc_fisiatric.fisiologico)
             : null,
       };
-
-      console.log(hc_fisiatric_response);
 
       return res.status(200).json(hc_fisiatric_response);
     } catch (err) {

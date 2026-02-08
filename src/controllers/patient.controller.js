@@ -49,7 +49,6 @@ export class PatientController {
       // Agregar tutores al resultado (será [] si no hay tutores)
       result.tutores = tutoresMapeados;
 
-      console.log(result);
       return res.json(result);
     } catch (err) {
       next(err);
