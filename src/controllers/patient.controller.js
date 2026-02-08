@@ -85,6 +85,17 @@ export class PatientController {
       const id_mutual = data.id_mutual ?? data.mutual;
       const numero_afiliado = data.numero_afiliado ?? data.numeroAfiliado;
       if (
+        numero_afiliado != null &&
+        numero_afiliado !== '' &&
+        String(numero_afiliado).length > 25
+      ) {
+        return next(
+          new BadRequestError(
+            'El número de afiliado no puede superar los 25 caracteres',
+          ),
+        );
+      }
+      if (
         id_mutual != null &&
         id_mutual !== '' &&
         numero_afiliado != null &&
@@ -158,6 +169,18 @@ export class PatientController {
       data.ocupacion_anterior ?? data.ocupacionAnterior ?? null;
     const id_mutual = data.id_mutual ?? data.mutual;
     const numero_afiliado = data.numero_afiliado ?? data.numeroAfiliado;
+
+    if (
+      numero_afiliado != null &&
+      numero_afiliado !== '' &&
+      String(numero_afiliado).length > 25
+    ) {
+      return next(
+        new BadRequestError(
+          'El número de afiliado no puede superar los 25 caracteres',
+        ),
+      );
+    }
 
     try {
       await PatientModel.updatePatient({
