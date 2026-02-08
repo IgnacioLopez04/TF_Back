@@ -50,8 +50,9 @@ app.use((req, res, next) => {
 
 app.use(errorHandler);
 
-app.listen(PORT, () => {
-  console.log('El servidor corre en el puerto: ', PORT);
+const port = Number(PORT) || 3000;
+app.listen(port, () => {
+  console.log('El servidor corre en el puerto: ', port);
   pool
     .query('SELECT 1')
     .then(() => console.log('[BD] Conexión establecida'))
