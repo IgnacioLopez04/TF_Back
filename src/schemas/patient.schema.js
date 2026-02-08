@@ -23,7 +23,10 @@ export class PatientSchema {
     piso_departamento: z.string().optional(),
     vive_con: z.string().optional(),
     id_mutual: z.union([z.number(), z.string()]).optional(),
-    numero_afiliado: z.string().optional(),
+    numero_afiliado: z
+      .string()
+      .max(25, 'El número de afiliado no puede superar los 25 caracteres')
+      .optional(),
     ocupacion_actual: z.string().optional(),
     ocupacion_anterior: z.string().optional(),
     tutores: z

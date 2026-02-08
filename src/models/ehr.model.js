@@ -7,9 +7,9 @@ export class EHRModel {
     try {
       const { rows } = await pool.query(
         `
-        INSERT INTO historia_clinica (dni_paciente, hash_id) VALUES ($1, $2) RETURNING *
+        INSERT INTO historia_clinica (dni_paciente, hash_id, fecha_modificacion) VALUES ($1, $2, $3) RETURNING *
         `,
-        [dni_paciente, hashId],
+        [dni_paciente, hashId, new Date()],
       );
       return rows[0];
     } catch (err) {
