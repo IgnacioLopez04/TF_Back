@@ -18,13 +18,13 @@ Se aplica el modelo STRIDE sobre los flujos principales del sistema: autenticaci
 [TF_Front - Vercel]
       │  HTTPS + JWT
       ▼
-[TF_Back - Node.js/Render]
+[TF_Back - Node.js/Railway]
       │  JWT interno
       ├──────────────────────▶ [fhir_server - Spring Boot/Render]
       │                                   │
       │                              [HAPI FHIR R5]
       │
-      ├──▶ [PostgreSQL - Render Managed DB]
+      ├──▶ [PostgreSQL - Railway Managed DB]
       └──▶ [AWS S3 - archivos médicos]
 ```
 

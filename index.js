@@ -1,5 +1,6 @@
 import express from 'express';
 import cors from 'cors';
+import helmet from 'helmet';
 import fileUpload from 'express-fileupload';
 import { errorHandler } from './src/middlewares/errors.middleware.js';
 import { PORT, ALLOWED_CORS, pool } from './src/configs/config.js';
@@ -30,6 +31,7 @@ app.use(
 );
 app.use(express.json());
 app.disable('x-powered-by');
+app.use(helmet());
 
 app.use((req, res, next) => {
   next();

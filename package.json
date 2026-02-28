@@ -21,6 +21,7 @@
     "express": "4.21.0",
     "express-fileupload": "^1.5.1",
     "google-auth-library": "^9.15.1",
+    "helmet": "^8.1.0",
     "jsonwebtoken": "^9.0.2",
     "pg": "8.13.0",
     "swagger-ui-express": "^5.0.1",
