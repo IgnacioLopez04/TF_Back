@@ -1,12 +1,14 @@
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
 import fileUpload from 'express-fileupload';
 import { errorHandler } from './src/middlewares/errors.middleware.js';
 import { PORT, ALLOWED_CORS, pool } from './src/configs/config.js';
 import { validateToken } from './src/utils/token.js';
 import { router as apiRouter } from './src/routes/index.routes.js';
 import { router as authRouter } from './src/routes/auth.routes.js';
+import { RateLimitPostgresStore } from './src/stores/rateLimit.store.js';
 import swaggerUi from 'swagger-ui-express';
 import YAML from 'yamljs';
 import { NotFoundError } from './src/errors/errors.js';
@@ -33,11 +35,23 @@ app.use(express.json());
 app.disable('x-powered-by');
 app.use(helmet());
 
+const WINDOW_MS = 15 * 60 * 1000;
+const authLimiter = rateLimit({
+  windowMs: WINDOW_MS,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  store: new RateLimitPostgresStore({ windowMs: WINDOW_MS }),
+  validate: { keyGeneratorIpFallback: false },
+  keyGenerator: (req) =>
+    `ip:${req.ip ?? req.socket?.remoteAddress ?? 'unknown'}`,
+});
+
 app.use((req, res, next) => {
   next();
 });
 
-app.use('/auth', authRouter);
+app.use('/auth', authLimiter, authRouter);
 
 app.get('/health', (req, res) => {
   res.status(200).json({ ok: true });
