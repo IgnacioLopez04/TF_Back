@@ -43,7 +43,7 @@ Se aplica el modelo STRIDE sobre los flujos principales del sistema: autenticaci
 | **I**nformation Disclosure | CORS permisivo permite requests desde orígenes no autorizados | Todos los endpoints | CORS configurado con lista blanca de orígenes en los tres componentes | ✅ Implementado |
 | **D**enial of Service | Fuerza bruta sobre endpoint de autenticación | `POST /auth/login` | **Sin rate limiting implementado** | ⚠️ Gap — trabajo futuro |
 | **D**enial of Service | Uploads masivos para saturar almacenamiento | `POST /api/file` | Límite de **50 MB por archivo** en `express-fileupload` y Spring multipart | ✅ Implementado |
-| **E**levation of Privilege | Un usuario de bajo privilegio accede a datos de otro perfil | Rutas de negocio en `/api` | Rol `id_tipo_usuario` incluido en JWT; **no se verifica en controllers** | ⚠️ Gap — ver sección 5 |
+| **E**levation of Privilege | Un usuario de bajo privilegio accede a datos de otro perfil | Rutas de negocio en `/api` | Middleware `requireRole` verifica `id_tipo_usuario` en rutas administrativas (user, patient activate/delete, abm cargar) | ✅ Implementado — ver sección 5 |
 
 ---
 
@@ -338,26 +338,18 @@ app.use((req, res, next) => {
 
 Y un `HandlerInterceptor` equivalente en el FHIR server.
 
-### Gap 2 — RBAC no aplicado en controllers
+### Gap 2 — RBAC no aplicado en controllers — **MITIGADO**
 
-**Problema:** El JWT incluye `id_tipo_usuario` (rol del usuario) y la tabla `tipo_usuario` existe en la base de datos, pero ningún controller verifica el rol antes de ejecutar operaciones. Un médico podría acceder a endpoints administrativos si conoce la URL.
+**Problema (original):** El JWT incluye `id_tipo_usuario` (rol del usuario) y la tabla `tipo_usuario` existe en la base de datos, pero ningún controller verifica el rol antes de ejecutar operaciones. Un médico podría acceder a endpoints administrativos si conoce la URL.
 
-**Estado declarado en README del backend:** "Control de acceso basado en roles (en desarrollo)".
+**Implementación:** Se añadió el middleware `requireRole` en `TF_Back/src/middlewares/authorization.middleware.js`. Recibe una lista de roles permitidos y devuelve 403 con mensaje "Acceso no autorizado para este rol" si `res.user.id_tipo_usuario` no está en la lista. Las constantes de rol (p. ej. `ROLES.ADMIN = 1`) están en `src/constants/roles.js`.
 
-**Solución propuesta:** Middleware de autorización por rol:
+**Rutas protegidas con `requireRole([ROLES.ADMIN])`:**
+- **user.routes.js:** create, getUsers, getActiveUsers, getUserType, updateUser, getUser por DNI, blockUser, updateExpiredAt, activateUser.
+- **patient.routes.js:** PUT /activate/:hash_id (reactivar paciente), DELETE /delete/:hash_id (eliminar paciente).
+- **abm.routes.js:** POST /cargar-provincias, POST /cargar-ciudades.
 
-```javascript
-// Ejemplo de uso propuesto
-export const requireRole = (allowedRoles) => (req, res, next) => {
-  if (!allowedRoles.includes(res.user.id_tipo_usuario)) {
-    return res.status(403).json({ error: 'Acceso no autorizado para este rol' });
-  }
-  next();
-};
-
-// En routes
-router.get('/admin/usuarios', requireRole([1]), UserController.getAll);
-```
+El middleware se usa después de `validateToken` (global en `/api`), por lo que en rutas sensibles se encadena `requireRole([ROLES.ADMIN])` antes del controller.
 
 ### Gap 3 — Sin rate limiting en autenticación
 
@@ -424,7 +416,7 @@ jwt.secret=${JWT_SECRET}
 | Identificadores anonimizados (hash_id) | ✅ Implementado | Sección 2.7 |
 | Pre-signed URLs temporales para archivos | ✅ Implementado (10 min) | Sección 2.4 |
 | Expiración de tokens y cuentas | ✅ Implementado | Sección 2.2 |
-| RBAC aplicado en controllers | ⚠️ Pendiente | Gap 2 |
+| RBAC aplicado en controllers | ✅ Implementado | Middleware `requireRole`; rutas user, patient (activate/delete), abm (cargar-provincias/ciudades) — Gap 2 |
 | Audit trail estructurado | ⚠️ Pendiente | Gap 1 |
 | Rate limiting en auth | ⚠️ Pendiente | Gap 3 |
 | Security headers (helmet) | ⚠️ Pendiente | Gap 4 |
