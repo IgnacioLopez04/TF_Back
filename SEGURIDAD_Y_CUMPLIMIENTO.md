@@ -41,7 +41,7 @@ Se aplica el modelo STRIDE sobre los flujos principales del sistema: autenticaci
 | **I**nformation Disclosure | Acceso a archivos médicos mediante URL directa | AWS S3 | Pre-signed URLs con expiración de **10 minutos**; sin URL directa permanente | ✅ Implementado |
 | **I**nformation Disclosure | Filtrado de tecnología usada (`X-Powered-By`) | Headers HTTP | `app.disable('x-powered-by')` en Express | ✅ Implementado |
 | **I**nformation Disclosure | CORS permisivo permite requests desde orígenes no autorizados | Todos los endpoints | CORS configurado con lista blanca de orígenes en los tres componentes | ✅ Implementado |
-| **D**enial of Service | Fuerza bruta sobre endpoint de autenticación | `POST /auth/login` | **Sin rate limiting implementado** | ⚠️ Gap — trabajo futuro |
+| **D**enial of Service | Fuerza bruta sobre endpoint de autenticación | `POST /auth/login` | Rate limiting en `/auth` con `express-rate-limit` (10 req/15 min por IP, store en Postgres) | ✅ Implementado (actualización posterior) |
 | **D**enial of Service | Uploads masivos para saturar almacenamiento | `POST /api/file` | Límite de **50 MB por archivo** en `express-fileupload` y Spring multipart | ✅ Implementado |
 | **E**levation of Privilege | Un usuario de bajo privilegio accede a datos de otro perfil | Rutas de negocio en `/api` | Middleware `requireRole` verifica `id_tipo_usuario` en rutas administrativas (user, patient activate/delete, abm cargar) | ✅ Implementado — ver sección 5 |
 
@@ -314,29 +314,123 @@ Este sistema es un **prototipo académico (MVP)**. No está en producción con p
 
 Los siguientes gaps son reconocidos honestamente. No invalidan el sistema como prototipo, pero serían obligatorios en un sistema en producción con datos reales.
 
-### Gap 1 — Audit Trail (alta prioridad para datos clínicos)
+### Gap 1 — Audit Trail (alta prioridad para datos clínicos) — **MITIGADO**
 
-**Problema:** No existe registro estructurado de quién accedió a qué dato y cuándo. Los logs actuales son operacionales (debug/info) sin estructura de auditoría.
+**Problema (original):** No existía registro estructurado de quién accedió a qué dato y cuándo. Los logs eran puramente operacionales (debug/info) sin estructura de auditoría.
 
-**Solución propuesta:** Agregar un middleware de auditoría en TF_Back:
+**Implementación en TF_Back:** Se agregó un middleware de auditoría en `index.js`, encadenado después de `validateToken` y antes de montar las rutas `/api`. Este middleware:
 
 ```javascript
-// Middleware propuesto para TF_Back/index.js
+app.use(validateToken);
 app.use((req, res, next) => {
-  const user = res.user; // disponible tras validateToken
-  console.log(JSON.stringify({
-    timestamp: new Date().toISOString(),
-    user_email: user?.email ?? 'anonymous',
-    user_id: user?.id_usuario ?? null,
-    method: req.method,
-    path: req.path,
-    ip: req.ip,
-  }));
+  const path = req.path || req.originalUrl || '';
+
+  if (
+    path.startsWith('/health') ||
+    path.startsWith('/api-docs') ||
+    path.startsWith('/auth')
+  ) {
+    return next();
+  }
+
+  const user = res.user || {};
+
+  const method = req.method;
+  const ip =
+    req.ip ?? req.socket?.remoteAddress ?? null;
+  const userAgent = req.headers['user-agent'] || null;
+
+  const action =
+    method === 'GET'
+      ? 'READ'
+      : method === 'POST'
+      ? 'CREATE'
+      : method === 'PUT' || method === 'PATCH'
+      ? 'UPDATE'
+      : method === 'DELETE'
+      ? 'DELETE'
+      : null;
+
+  const metadata = {
+    query_keys: Object.keys(req.query || {}),
+    body_keys:
+      req.body && typeof req.body === 'object'
+        ? Object.keys(req.body)
+        : [],
+  };
+
+  void insertAuditEvent({
+    user_id: user.id_usuario ?? null,
+    user_email: user.email ?? 'anonymous',
+    user_role: user.id_tipo_usuario ?? null,
+    ip_address: ip,
+    user_agent: userAgent,
+    service: 'tf_back',
+    http_method: method,
+    path,
+    status_code: null,
+    resource_type: null,
+    patient_hash_id:
+      req.hash_id ||
+      req.dni_paciente ||
+      null,
+    action,
+    request_id: null,
+    metadata,
+  });
+
   next();
 });
 ```
 
-Y un `HandlerInterceptor` equivalente en el FHIR server.
+De este modo se registra quién accede a rutas de negocio sin incluir el contenido completo de los cuerpos (solo las claves), reduciendo el riesgo de exponer datos clínicos en los logs.
+
+**Implementación en fhir_server:** Se creó el `HandlerInterceptor` `FhirAuditInterceptor` y se registró en `WebConfig` para todas las rutas `/fhir/**` (excluyendo `/fhir/metadata`). Este interceptor:
+
+```java
+@Component
+public class FhirAuditInterceptor implements HandlerInterceptor {
+
+    private static final Logger logger = LoggerFactory.getLogger(FhirAuditInterceptor.class);
+
+    @Autowired
+    private JwtService jwtService;
+
+    @Override
+    public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {
+        String requestURI = request.getRequestURI();
+
+        if (requestURI.startsWith("/fhir/") && !requestURI.equals("/fhir/metadata")) {
+            String authHeader = request.getHeader("Authorization");
+            String token = authHeader != null && !authHeader.isEmpty() ? authHeader : null;
+
+            String email = null;
+            if (token != null) {
+                var claims = jwtService.getClaimsFromToken(token);
+                if (claims != null) {
+                    Object emailClaim = claims.get("email");
+                    email = emailClaim != null ? email.toString() : null;
+                }
+            }
+
+            Map<String, Object> auditEvent = new HashMap<>();
+            auditEvent.put("type", "audit");
+            auditEvent.put("service", "fhir_server");
+            auditEvent.put("timestamp", Instant.now().toString());
+            auditEvent.put("user_email", email != null ? email : "anonymous");
+            auditEvent.put("method", request.getMethod());
+            auditEvent.put("path", requestURI);
+            auditEvent.put("ip", request.getRemoteAddr());
+
+            logger.info(auditEvent.toString());
+        }
+
+        return true;
+    }
+}
+```
+
+Con esto se obtiene un rastro básico de auditoría para todas las operaciones FHIR protegidas, nuevamente sin loguear el contenido clínico completo. Además, tanto en `TF_Back` como en `fhir_server` estos eventos se persisten en la tabla `audit_log` de PostgreSQL, lo que permite consultas posteriores sobre quién accedió a qué recurso y cuándo.
 
 ### Gap 2 — RBAC no aplicado en controllers — **MITIGADO**
 
@@ -351,26 +445,37 @@ Y un `HandlerInterceptor` equivalente en el FHIR server.
 
 El middleware se usa después de `validateToken` (global en `/api`), por lo que en rutas sensibles se encadena `requireRole([ROLES.ADMIN])` antes del controller.
 
-### Gap 3 — Sin rate limiting en autenticación
+### Gap 3 — Rate limiting en autenticación — **MITIGADO**
 
-**Problema:** El endpoint `POST /auth/login` no tiene límite de intentos. Es susceptible a ataques de enumeración de cuentas o fuerza bruta en modo desarrollo.
+**Problema (original):** El endpoint `POST /auth/login` no tenía límite de intentos y era susceptible a ataques de enumeración de cuentas o fuerza bruta (especialmente en modo desarrollo).
 
-**Solución propuesta:** `express-rate-limit` en el router de auth:
+**Implementación:** Se añadió `express-rate-limit` en `TF_Back/index.js` sobre el router de autenticación:
 
 ```javascript
 import rateLimit from 'express-rate-limit';
-const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 10 });
+const WINDOW_MS = 15 * 60 * 1000;
+const authLimiter = rateLimit({
+  windowMs: WINDOW_MS,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  store: new RateLimitPostgresStore({ windowMs: WINDOW_MS }),
+  validate: { keyGeneratorIpFallback: false },
+  keyGenerator: (req) =>
+    `ip:${req.ip ?? req.socket?.remoteAddress ?? 'unknown'}`,
+});
 app.use('/auth', authLimiter, authRouter);
 ```
 
-### Gap 4 — Security headers HTTP ausentes
+### Gap 4 — Security headers HTTP ausentes — **MITIGADO**
 
-**Problema:** No se envían headers de seguridad estándar (`X-Frame-Options`, `X-Content-Type-Options`, `Strict-Transport-Security`, `Content-Security-Policy`).
+**Problema (original):** No se enviaban headers de seguridad estándar (`X-Frame-Options`, `X-Content-Type-Options`, `Strict-Transport-Security`, `Content-Security-Policy`).
 
-**Solución propuesta:** Agregar `helmet` en TF_Back:
+**Implementación:** Se incorporó `helmet` en `TF_Back/index.js`, junto con la desactivación de `X-Powered-By`:
 
 ```javascript
 import helmet from 'helmet';
+app.disable('x-powered-by');
 app.use(helmet());
 ```
 
@@ -417,7 +522,7 @@ jwt.secret=${JWT_SECRET}
 | Pre-signed URLs temporales para archivos | ✅ Implementado (10 min) | Sección 2.4 |
 | Expiración de tokens y cuentas | ✅ Implementado | Sección 2.2 |
 | RBAC aplicado en controllers | ✅ Implementado | Middleware `requireRole`; rutas user, patient (activate/delete), abm (cargar-provincias/ciudades) — Gap 2 |
-| Audit trail estructurado | ⚠️ Pendiente | Gap 1 |
-| Rate limiting en auth | ⚠️ Pendiente | Gap 3 |
-| Security headers (helmet) | ⚠️ Pendiente | Gap 4 |
+| Audit trail estructurado | ✅ Implementado (básico mediante logs estructurados) | Gap 1 — middleware en TF_Back y `FhirAuditInterceptor` en fhir_server |
+| Rate limiting en auth | ✅ Implementado | Gap 3 — mitigado en `TF_Back/index.js` |
+| Security headers (helmet) | ✅ Implementado | Gap 4 — mitigado en `TF_Back/index.js` |
 | Refresh tokens | ⚠️ Decisión consciente de no implementar | Gap 6 |
