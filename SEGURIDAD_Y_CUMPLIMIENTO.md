@@ -80,10 +80,12 @@ En `NODE_ENV !== 'production'`, el login acepta el email directamente sin valida
 
 ```javascript
 // TF_Back/src/utils/token.js
+const { ACCESS_TOKEN_EXPIRATION = '1h' } = process.env;
+
 const token = jwt.sign(
   { id_usuario, email, id_tipo_usuario },
   SECRET_KEY,          // desde variable de entorno SECRET_KEY
-  { expiresIn: '1h' }
+  { expiresIn: ACCESS_TOKEN_EXPIRATION }
 );
 ```
 
@@ -102,11 +104,16 @@ Claims claims = Jwts.parser()
 | Parámetro | TF_Back | fhir_server |
 |---|---|---|
 | Algoritmo | HMAC-SHA-256 | HMAC-SHA-256 |
-| Expiración | 1 hora | 8 horas |
+| Expiración access token | Configurable vía `ACCESS_TOKEN_EXPIRATION` (por defecto `1h` en prod, valores menores en dev para pruebas) | 8 horas (`JWT_EXPIRATION`) |
 | Claims incluidos | `id_usuario`, `email`, `id_tipo_usuario` | — (valida email) |
-| Secret fuente | `process.env.SECRET_KEY` | `${JWT_SECRET}` (env var, sin fallback en prod) |
+| Secret fuente | `process.env.SECRET_KEY` | `${JWT_SECRET}` (env var, sin fallback en archivos de propiedades) |
 
-**Decisión de diseño — sin refresh tokens:** El sistema no implementa refresh tokens. Cuando el JWT expira, el usuario debe re-autenticarse. Esta decisión simplifica la arquitectura (elimina la necesidad de revocar refresh tokens) a costa de sesiones más cortas. El frontend maneja la expiración automáticamente con un polling cada 30 segundos y redirección automática al login.
+**Refresh tokens:** Además del access token de corta duración, el backend emite un `refresh_token` opaco almacenado en la tabla `refresh_token` de PostgreSQL. Este token:
+- Se devuelve al frontend únicamente como cookie `HttpOnly` (y `Secure` en producción), de nombre `refresh_token`.
+- Tiene una expiración más larga que el access token (actualmente 1 día en base de datos, configurable) y puede revocarse explícitamente (logout) o por expiración.
+- Se usa a través del endpoint `POST /auth/refresh` expuesto por `fhir_server`, que a su vez llama a `TF_Back /auth/refresh` para emitir un nuevo access token (y rotar el refresh token).
+
+En frontend, un watcher verifica periódicamente la expiración del access token y llama a `/auth/refresh` **antes** de que expire, evitando forzar al usuario a re-autenticarse en sesiones largas.
 
 #### Expiración de cuentas de usuario
 
@@ -162,7 +169,7 @@ Todos los secretos se gestionan como variables de entorno. Ningún secret se com
 | Secret | Componente | Variable de entorno | Riesgo identificado |
 |---|---|---|---|
 | JWT signing key | TF_Back | `SECRET_KEY` | — |
-| JWT signing key | fhir_server | `JWT_SECRET` | El `application.properties` tiene un **fallback hardcodeado** en desarrollo: `df8a3e5d9b2e4c97b1c6a574c0f7ac31a78e497f04d64a2b9c47e9db9a3c49e6`. En producción (`application-prod.properties`) el fallback **no existe** y la app falla si la variable no está definida. |
+| JWT signing key | fhir_server | `JWT_SECRET` | Tanto `application.properties` como `application-prod.properties` exigen que `JWT_SECRET` se defina vía variable de entorno (sin fallback en los archivos de propiedades); si no está presente, el servidor no arranca. |
 | Google OAuth | TF_Back | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | — |
 | AWS credentials | TF_Back | `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` | — |
 | DB password | TF_Back | `DB_PASSWORD` / `DATABASE_URL` | — |
@@ -296,7 +303,7 @@ Estos logs son operacionales, no constituyen un audit trail formal (ver sección
 | Confidencialidad de datos en tránsito | TLS 1.2+ en todos los tramos (Vercel + Render) | ✅ |
 | Identificadores no expuestos | `hash_id` derivado del DNI (SHA-256 + salt) | ✅ |
 | Integridad de datos | Firma JWT evita manipulación; S3 con SSE garantiza integridad en reposo | ✅ |
-| Registro de accesos (auditoría) | **No implementado formalmente** | ⚠️ Gap |
+| Registro de accesos (auditoría) | Audit trail básico en TF_Back (tabla `audit_log`); pendiente extenderlo a fhir_server | ⚠️ Gap (parcial) |
 | Derecho de acceso del paciente a sus datos | No aplicable (sistema interno para profesionales, no para pacientes) | — |
 | Derecho al olvido / eliminación | No implementado | ⚠️ Gap / fuera de scope MVP |
 
@@ -314,7 +321,7 @@ Este sistema es un **prototipo académico (MVP)**. No está en producción con p
 
 Los siguientes gaps son reconocidos honestamente. No invalidan el sistema como prototipo, pero serían obligatorios en un sistema en producción con datos reales.
 
-### Gap 1 — Audit Trail (alta prioridad para datos clínicos) — **MITIGADO**
+### Gap 1 — Audit Trail (alta prioridad para datos clínicos) — **PARCIALMENTE MITIGADO**
 
 **Problema (original):** No existía registro estructurado de quién accedió a qué dato y cuándo. Los logs eran puramente operacionales (debug/info) sin estructura de auditoría.
 
@@ -385,52 +392,12 @@ app.use((req, res, next) => {
 
 De este modo se registra quién accede a rutas de negocio sin incluir el contenido completo de los cuerpos (solo las claves), reduciendo el riesgo de exponer datos clínicos en los logs.
 
-**Implementación en fhir_server:** Se creó el `HandlerInterceptor` `FhirAuditInterceptor` y se registró en `WebConfig` para todas las rutas `/fhir/**` (excluyendo `/fhir/metadata`). Este interceptor:
+**Implementación en fhir_server (pendiente):** Actualmente existe el interceptor `FhirAuthInterceptor`, registrado en `WebConfig`, que valida la presencia y validez del JWT en todas las rutas `/fhir/**` (excluyendo `/fhir/metadata`) y retorna `401` cuando el token falta o es inválido. Sin embargo, este interceptor no construye ni persiste eventos de auditoría estructurados (solo cumple función de autenticación/autorización).
 
-```java
-@Component
-public class FhirAuditInterceptor implements HandlerInterceptor {
+En resumen:
 
-    private static final Logger logger = LoggerFactory.getLogger(FhirAuditInterceptor.class);
-
-    @Autowired
-    private JwtService jwtService;
-
-    @Override
-    public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {
-        String requestURI = request.getRequestURI();
-
-        if (requestURI.startsWith("/fhir/") && !requestURI.equals("/fhir/metadata")) {
-            String authHeader = request.getHeader("Authorization");
-            String token = authHeader != null && !authHeader.isEmpty() ? authHeader : null;
-
-            String email = null;
-            if (token != null) {
-                var claims = jwtService.getClaimsFromToken(token);
-                if (claims != null) {
-                    Object emailClaim = claims.get("email");
-                    email = emailClaim != null ? email.toString() : null;
-                }
-            }
-
-            Map<String, Object> auditEvent = new HashMap<>();
-            auditEvent.put("type", "audit");
-            auditEvent.put("service", "fhir_server");
-            auditEvent.put("timestamp", Instant.now().toString());
-            auditEvent.put("user_email", email != null ? email : "anonymous");
-            auditEvent.put("method", request.getMethod());
-            auditEvent.put("path", requestURI);
-            auditEvent.put("ip", request.getRemoteAddr());
-
-            logger.info(auditEvent.toString());
-        }
-
-        return true;
-    }
-}
-```
-
-Con esto se obtiene un rastro básico de auditoría para todas las operaciones FHIR protegidas, nuevamente sin loguear el contenido clínico completo. Además, tanto en `TF_Back` como en `fhir_server` estos eventos se persisten en la tabla `audit_log` de PostgreSQL, lo que permite consultas posteriores sobre quién accedió a qué recurso y cuándo.
+- En `TF_Back` ya se registran eventos estructurados en la tabla `audit_log` (usuario, rol, IP, método, path, metadata de la request).
+- En `fhir_server` aún no hay un audit trail equivalente; sería trabajo futuro reutilizar el mismo esquema de `audit_log` o exportar eventos hacia `TF_Back`.
 
 ### Gap 2 — RBAC no aplicado en controllers — **MITIGADO**
 
@@ -479,32 +446,36 @@ app.disable('x-powered-by');
 app.use(helmet());
 ```
 
-### Gap 5 — JWT secret con fallback hardcodeado en desarrollo
+### Gap 5 — JWT secret con fallback hardcodeado en desarrollo — **MITIGADO**
 
-**Problema:** `application.properties` del FHIR server define un valor por defecto para `JWT_SECRET`:
+**Problema (original):** versiones anteriores de `application.properties` del FHIR server definían un valor por defecto para `JWT_SECRET`:
 
 ```properties
 jwt.secret=${JWT_SECRET:df8a3e5d9b2e4c97b1c6a574c0f7ac31a78e497f04d64a2b9c47e9db9a3c49e6}
 ```
 
-Este valor es conocido (está en el repositorio). Si se despliega accidentalmente con el perfil de desarrollo, cualquier persona que conozca el secret podría generar tokens válidos.
+Este valor era conocido (estaba en el repositorio). Si se desplegaba accidentalmente con el perfil de desarrollo, cualquier persona que conociera el secret podía generar tokens válidos.
 
-**Mitigación actual:** el perfil de producción (`application-prod.properties`) no tiene fallback y falla en startup si la variable no está definida:
+**Estado actual (mitigación):** tanto `application.properties` como `application-prod.properties` requieren ahora que `JWT_SECRET` se defina explícitamente vía variable de entorno, sin fallback en los archivos de propiedades:
 
 ```properties
-# application-prod.properties — línea 30
+# application.properties / application-prod.properties
 jwt.secret=${JWT_SECRET}
 ```
 
-**Recomendación adicional:** eliminar el fallback también del perfil de desarrollo para evitar deployments descuidados.
+Un despliegue sin `JWT_SECRET` falla en startup, evitando el uso de secrets hardcodeados.
 
-### Gap 6 — Sin refresh tokens
+### Gap 6 — Refresh tokens — **MITIGADO**
 
-**Problema:** Los JWT expiran a la 1 hora (backend) / 8 horas (FHIR). No hay mecanismo de renovación silenciosa.
+**Problema (original):** inicialmente solo existían access tokens JWT de corta duración (1 hora en backend / 8 horas en FHIR) sin mecanismo de renovación silenciosa, por lo que el usuario perdía la sesión al expirar el token.
 
-**Impacto:** Los usuarios pierden la sesión y deben re-autenticarse. En una sesión médica activa de más de 1 hora, el usuario podría perder trabajo no guardado.
+**Implementación actual:** se incorporó un flujo de refresh tokens opacos:
 
-**Decisión de diseño:** se aceptó este tradeoff conscientemente para mantener la arquitectura simple. El frontend monitorea el token cada 30 segundos y notifica al usuario antes de la expiración. En producción real se implementaría un endpoint `POST /auth/refresh` con refresh tokens de larga duración almacenados en base de datos con revocación.
+- `TF_Back` emite un `refresh_token` aleatorio, lo almacena en la tabla `refresh_token` (con `expires_at` y posibilidad de revocación) y lo rota en cada `/auth/refresh`.
+- `fhir_server` expone `/auth/refresh`, que lee el `refresh_token` desde una cookie `HttpOnly` / `Secure` y delega en `TF_Back` la validación y emisión de un nuevo par `access_token` + `refresh_token`.
+- En logout (`/auth/logout`) se revoca el refresh token en backend y se elimina la cookie.
+
+Con esto, las sesiones pueden renovarse de forma transparente mientras el refresh token siga siendo válido.
 
 ---
 
@@ -516,13 +487,13 @@ jwt.secret=${JWT_SECRET}
 | Autorización (token requerido en todas las rutas protegidas) | ✅ Implementado | `validateToken` middleware, `FhirAuthInterceptor` |
 | Cifrado en tránsito (TLS 1.2+) | ✅ Delegado a infraestructura | Sección 2.3 |
 | Cifrado en reposo (S3 AES-256) | ✅ Por defecto en AWS | Sección 2.4 |
-| Gestión de secretos (env vars, sin hardcode en prod) | ✅ Con observación en dev | Sección 2.5 |
+| Gestión de secretos (env vars, sin hardcode en prod) | ✅ | Sección 2.5 |
 | CORS restrictivo por lista blanca | ✅ Implementado | Sección 2.6 |
 | Identificadores anonimizados (hash_id) | ✅ Implementado | Sección 2.7 |
 | Pre-signed URLs temporales para archivos | ✅ Implementado (10 min) | Sección 2.4 |
 | Expiración de tokens y cuentas | ✅ Implementado | Sección 2.2 |
 | RBAC aplicado en controllers | ✅ Implementado | Middleware `requireRole`; rutas user, patient (activate/delete), abm (cargar-provincias/ciudades) — Gap 2 |
-| Audit trail estructurado | ✅ Implementado (básico mediante logs estructurados) | Gap 1 — middleware en TF_Back y `FhirAuditInterceptor` en fhir_server |
+| Audit trail estructurado | ⚠️ Parcial (TF_Back con tabla `audit_log`; fhir_server solo logs operacionales) | Gap 1 — middleware en TF_Back; pendiente interceptor equivalente en fhir_server |
 | Rate limiting en auth | ✅ Implementado | Gap 3 — mitigado en `TF_Back/index.js` |
 | Security headers (helmet) | ✅ Implementado | Gap 4 — mitigado en `TF_Back/index.js` |
-| Refresh tokens | ⚠️ Decisión consciente de no implementar | Gap 6 |
+| Refresh tokens | ✅ Implementado (access/refresh con rotación y cookie `HttpOnly`) | Sección 2.2 y Gap 6 |

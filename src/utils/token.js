@@ -1,11 +1,13 @@
 import jwt from 'jsonwebtoken';
 import { SECRET_KEY } from '../configs/config.js';
 
+const { ACCESS_TOKEN_EXPIRATION = '1h' } = process.env;
+
 export const createToken = async (user) => {
   const { id_usuario, email, id_tipo_usuario } = user;
 
   const token = jwt.sign({ id_usuario, email, id_tipo_usuario }, SECRET_KEY, {
-    expiresIn: '1h',
+    expiresIn: ACCESS_TOKEN_EXPIRATION,
   });
   return token;
 };
