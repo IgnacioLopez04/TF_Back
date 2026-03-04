@@ -3,13 +3,13 @@
  * Debe usarse después de validateToken para que res.user exista.
  */
 export const requireRole = (allowedRoles) => (req, res, next) => {
-  console.log(res.user);
-  console.log(allowedRoles);
   if (!res.user) {
     return res.status(401).json({ error: 'No autenticado' });
   }
   if (!allowedRoles.includes(res.user.id_tipo_usuario)) {
-    return res.status(403).json({ error: 'Acceso no autorizado para este rol' });
+    return res
+      .status(403)
+      .json({ error: 'Acceso no autorizado para este rol' });
   }
   next();
 };
