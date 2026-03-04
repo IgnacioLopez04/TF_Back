@@ -67,8 +67,9 @@ app.use((req, res, next) => {
   }
 
   const user = res.user || {};
+  const rawIp = req.ip ?? req.socket?.remoteAddress ?? null;
   const ip =
-    req.ip ?? req.socket?.remoteAddress ?? null;
+    rawIp && rawIp.startsWith('::ffff:') ? rawIp.replace('::ffff:', '') : rawIp;
   const userAgent = req.headers['user-agent'] || null;
 
   const action =
