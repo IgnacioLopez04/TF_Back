@@ -38,7 +38,7 @@ TF_Back, fhir_server y la base de datos PostgreSQL están alojados en **Railway*
 | **S**poofing | Reutilización de token robado | Todas las rutas `/api` y `/fhir` | JWT firmado con HMAC-SHA-256 + expiración de 1 h (backend) y 8 h (FHIR) | ✅ Implementado |
 | **T**ampering (Manipulación) | Modificación del payload del JWT para escalar privilegios | Header `Authorization` | Firma HMAC-SHA-256: cualquier alteración invalida la firma → rechazo 401/403 | ✅ Implementado |
 | **T**ampering | Modificación de recursos FHIR en tránsito | Endpoints `PUT/POST /fhir/*` | HTTPS obligatorio en producción (Railway + Vercel proveen TLS 1.2+) | ✅ Delegado a infraestructura |
-| **R**epudiation (Repudio) | Un médico niega haber accedido o modificado un registro | Todas las operaciones con datos clínicos | TF_Back: eventos en tabla `audit_log`; fhir_server: eventos estructurados en log (`FhirAuditInterceptor` + `AuditLogService`). Persistencia centralizada de eventos FHIR en BD pendiente | ⚠️ Gap — ver sección 5 |
+| **R**epudiation (Repudio) | Un médico niega haber accedido o modificado un registro | Todas las operaciones con datos clínicos | TF_Back: eventos en tabla `audit_log` (middleware de auditoría). fhir_server: `FhirAuditFilter` + `AuditLogService` registran cada petición a `/fhir/*`, envían eventos a TF_Back vía `POST /api/internal/audit` (header `X-Internal-Api-Key`); TF_Back persiste en la misma tabla `audit_log`. Trail unificado | ✅ Implementado |
 | **I**nformation Disclosure | Exposición de datos clínicos sin autenticación | Rutas FHIR y API | Middleware `validateToken` en todas las rutas `/api`; `FhirAuthInterceptor` en todas las rutas `/fhir/*` excepto `/fhir/metadata` | ✅ Implementado |
 | **I**nformation Disclosure | Acceso a archivos médicos mediante URL directa | AWS S3 | Pre-signed URLs con expiración de **10 minutos**; sin URL directa permanente | ✅ Implementado |
 | **I**nformation Disclosure | Filtrado de tecnología usada (`X-Powered-By`) | Headers HTTP | `app.disable('x-powered-by')` en Express | ✅ Implementado |
@@ -176,6 +176,8 @@ Todos los secretos se gestionan como variables de entorno. Ningún secret se com
 | Google OAuth | TF_Back | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | — |
 | AWS credentials | TF_Back | `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` | — |
 | DB password | TF_Back | `DB_PASSWORD` / `DATABASE_URL` | — |
+| Clave auditoría interna | TF_Back | `INTERNAL_AUDIT_SECRET` | Protege `POST /api/internal/audit`; sin ella la ruta responde 503. |
+| Clave auditoría interna | fhir_server | `TFBACK_AUDIT_SECRET` (mapeado a `tfback.audit.secret`) | Mismo valor que `INTERNAL_AUDIT_SECRET`; se envía en header `X-Internal-Api-Key` al enviar eventos a TF_Back. |
 
 **Limitación:** no se usa un sistema de gestión de secretos centralizado (KMS, HashiCorp Vault, AWS Secrets Manager). Los secretos se configuran directamente en el panel de variables de entorno del proveedor de hosting (Railway). Para un sistema en producción con datos reales, se debería implementar rotación de secretos y auditoría de acceso a los mismos.
 
@@ -276,7 +278,7 @@ Decodificar en [jwt.io](https://jwt.io) un token generado para mostrar los claim
 
 ### 3.2 Logs operacionales y eventos de auditoría
 
-El `fhir_server` registra todas las operaciones sobre recursos FHIR a nivel `INFO` en producción. Además, el interceptor `FhirAuditInterceptor` y el servicio `AuditLogService` generan eventos de auditoría estructurados (user_email, service, http_method, path, ip_address, resource_type, patient_hash_id, action) que se escriben en log con el prefijo `FHIR_AUDIT_EVENT`. Esos eventos no se persisten aún en una base de datos; la persistencia en tabla `audit_log` o el envío a TF_Back es trabajo pendiente (Gap 1).
+El `fhir_server` registra todas las operaciones sobre recursos FHIR a nivel `INFO` en producción. Las peticiones a `/fhir/*` pasan por el **filtro** `FhirAuditFilter` (las rutas FHIR son atendidas por el servlet HAPI y no por los controladores MVC, por lo que el audit se hace en un Filter). El `AuditLogService` genera eventos estructurados (user_email, service, http_method, path, ip_address, resource_type, patient_hash_id, action, status_code), los escribe en log con el prefijo `FHIR_AUDIT_EVENT` y los envía de forma asíncrona a TF_Back (`POST /api/internal/audit`) con el header `X-Internal-Api-Key`. TF_Back persiste todos los eventos (propios y del fhir_server) en la tabla `audit_log`, unificando el audit trail.
 
 Ejemplo de logs operacionales:
 
@@ -307,7 +309,7 @@ WARN  PatientResourceProvider - Paciente no encontrado para hashId: b8d1e4...
 | Confidencialidad de datos en tránsito | TLS 1.2+ en todos los tramos (Vercel + Railway) | ✅ |
 | Identificadores no expuestos | `hash_id` derivado del DNI (SHA-256 + salt) | ✅ |
 | Integridad de datos | Firma JWT evita manipulación; S3 con SSE garantiza integridad en reposo | ✅ |
-| Registro de accesos (auditoría) | TF_Back: tabla `audit_log`. fhir_server: eventos estructurados en log (`FhirAuditInterceptor` + `AuditLogService`); pendiente persistencia en BD o envío a TF_Back | ⚠️ Gap (parcial) |
+| Registro de accesos (auditoría) | TF_Back: tabla `audit_log` (middleware tras `validateToken`). fhir_server: `FhirAuditFilter` + `AuditLogService` envían eventos a TF_Back (`POST /api/internal/audit`, clave interna); persistencia centralizada en `audit_log` | ✅ Implementado |
 | Derecho de acceso del paciente a sus datos | No aplicable (sistema interno para profesionales, no para pacientes) | — |
 | Derecho al olvido / eliminación | No implementado | ⚠️ Gap / fuera de scope MVP |
 
@@ -325,7 +327,7 @@ Este sistema es un **prototipo académico (MVP)**. No está en producción con p
 
 Los siguientes gaps son reconocidos honestamente. No invalidan el sistema como prototipo, pero serían obligatorios en un sistema en producción con datos reales.
 
-### Gap 1 — Audit Trail (alta prioridad para datos clínicos) — **PARCIALMENTE MITIGADO**
+### Gap 1 — Audit Trail (alta prioridad para datos clínicos) — **MITIGADO**
 
 **Problema (original):** No existía registro estructurado de quién accedió a qué dato y cuándo. Los logs eran puramente operacionales (debug/info) sin estructura de auditoría.
 
@@ -395,12 +397,14 @@ app.use((req, res, next) => {
 
 De este modo se registra quién accede a rutas de negocio sin incluir el contenido completo de los cuerpos (solo las claves), reduciendo el riesgo de exponer datos clínicos en los logs.
 
-**Implementación en fhir_server:** Existe el interceptor `FhirAuthInterceptor` (registrado en `WebConfig`) que valida la presencia y validez del JWT en todas las rutas `/fhir/**` (excluyendo `/fhir/metadata`) y retorna `401` cuando el token falta o es inválido. Además, el interceptor `FhirAuditInterceptor` y el servicio `AuditLogService` construyen eventos de auditoría estructurados (user_email, method, path, ip, resource_type, action) y los registran en log mediante `logger.info("FHIR_AUDIT_EVENT {}", event)`. El `AuditLogService` no persiste en base de datos (por diseño actual del servicio, que solo escribe en SLF4J). **Trabajo pendiente:** persistir esos eventos en una tabla `audit_log` (en fhir_server o en TF_Back) o exportarlos hacia TF_Back para unificar el audit trail.
+**Ruta interna de auditoría:** TF_Back expone `POST /api/internal/audit` (en `src/routes/internal.routes.js`), montada **antes** de `validateToken` para no requerir JWT. La ruta exige el header `X-Internal-Api-Key` con el valor de `INTERNAL_AUDIT_SECRET`. El cuerpo del request incluye `user_email`, `service`, `http_method`, `path`, `ip_address`, `user_agent`, `status_code`, `resource_type`, `patient_hash_id`, `action`. Se llama a `insertAuditEvent(event)` y se persiste en la tabla `audit_log`. Esta ruta está pensada para que el fhir_server (u otros servicios internos) envíen sus eventos de auditoría y se unifique el trail en una sola tabla.
+
+**Implementación en fhir_server:** Las peticiones a `/fhir/*` son atendidas por el servlet HAPI y no pasan por los interceptores de Spring MVC; por eso el audit se realiza en un **filtro**: `FhirAuditFilter` (configurado en `SecurityConfig`). El filtro ejecuta antes y después de la cadena de filtros; tras `doFilter` usa un `StatusCapturingResponseWrapper` para conocer el código HTTP de respuesta y luego llama a `AuditLogService.saveAuditEvent(userEmail, method, path, ipAddress, userAgent, resourceType, patientHashId, action, statusCode)`. La IP del cliente se obtiene de `X-Forwarded-For` / `X-Real-IP` o `getRemoteAddr()`, y las direcciones loopback se normalizan a `127.0.0.1`. El `AuditLogService` escribe el evento en log (`FHIR_AUDIT_EVENT`) y lo envía de forma asíncrona a TF_Back mediante `RestTemplate` a `{tfback.url}{tfback.api.path}/internal/audit`, con el header `X-Internal-Api-Key` tomado de `tfback.audit.secret` (misma clave que `INTERNAL_AUDIT_SECRET` en TF_Back). Si el secret no está configurado, solo se registra en log y no se envía.
 
 En resumen:
 
-- En `TF_Back` se registran eventos estructurados en la tabla `audit_log` (usuario, rol, IP, método, path, metadata de la request).
-- En `fhir_server` el `FhirAuditInterceptor` y `AuditLogService` generan y registran eventos estructurados en log (`FHIR_AUDIT_EVENT`); la persistencia en tabla o envío a TF_Back sigue pendiente.
+- En **TF_Back** se registran en `audit_log` tanto los eventos de las rutas `/api` (middleware de auditoría) como los recibidos vía `POST /api/internal/audit` (fhir_server y otros servicios internos).
+- En **fhir_server**, el `FhirAuditFilter` y el `AuditLogService` generan cada evento FHIR, lo registran en log y lo envían a TF_Back para su persistencia en la misma tabla `audit_log`. El audit trail de datos clínicos queda centralizado.
 
 ### Gap 2 — RBAC no aplicado en controllers — **MITIGADO**
 
@@ -496,7 +500,7 @@ Con esto, las sesiones pueden renovarse de forma transparente mientras el refres
 | Pre-signed URLs temporales para archivos | ✅ Implementado (10 min) | Sección 2.4 |
 | Expiración de tokens y cuentas | ✅ Implementado | Sección 2.2 |
 | RBAC aplicado en controllers | ✅ Implementado | Middleware `requireRole`; rutas user, patient (activate/delete), abm (cargar-provincias/ciudades) — Gap 2 |
-| Audit trail estructurado | ⚠️ Parcial (TF_Back: tabla `audit_log`; fhir_server: `FhirAuditInterceptor` + `AuditLogService` registran eventos en log; pendiente persistencia centralizada) | Gap 1 — middleware en TF_Back; interceptor y servicio en fhir_server; falta persistir eventos FHIR en BD o enviar a TF_Back |
+| Audit trail estructurado | ✅ Implementado | TF_Back: middleware de auditoría + tabla `audit_log`; ruta `POST /api/internal/audit` (X-Internal-Api-Key) para eventos internos. fhir_server: `FhirAuditFilter` + `AuditLogService` envían eventos a TF_Back; persistencia centralizada en `audit_log` (Gap 1 mitigado). |
 | Rate limiting en auth | ✅ Implementado | Gap 3 — mitigado en `TF_Back/index.js` |
 | Security headers (helmet) | ✅ Implementado | Gap 4 — mitigado en `TF_Back/index.js` |
 | Refresh tokens | ✅ Implementado (access/refresh con rotación y cookie `HttpOnly`) | Sección 2.2 y Gap 6 |
