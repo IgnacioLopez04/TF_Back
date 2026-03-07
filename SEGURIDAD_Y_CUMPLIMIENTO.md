@@ -19,14 +19,16 @@ Se aplica el modelo STRIDE sobre los flujos principales del sistema: autenticaci
       │  HTTPS + JWT
       ▼
 [TF_Back - Node.js/Railway]
-      │  JWT interno
-      ├──────────────────────▶ [fhir_server - Spring Boot/Render]
+      │  JWT interno (comunicación interna Railway)
+      ├──────────────────────▶ [fhir_server - Spring Boot/Railway]
       │                                   │
       │                              [HAPI FHIR R5]
       │
-      ├──▶ [PostgreSQL - Railway Managed DB]
+      ├──▶ [PostgreSQL - Railway]
       └──▶ [AWS S3 - archivos médicos]
 ```
+
+TF_Back, fhir_server y la base de datos PostgreSQL están alojados en **Railway**; la comunicación entre ellos es interna a la plataforma.
 
 ### Tabla STRIDE
 
@@ -35,8 +37,8 @@ Se aplica el modelo STRIDE sobre los flujos principales del sistema: autenticaci
 | **S**poofing (Suplantación) | Un atacante intenta autenticarse como otro usuario | Endpoint `POST /auth/login` | Google OAuth 2.0 con verificación de `idToken` via `google-auth-library`; en dev: lookup por email en DB | ✅ Implementado |
 | **S**poofing | Reutilización de token robado | Todas las rutas `/api` y `/fhir` | JWT firmado con HMAC-SHA-256 + expiración de 1 h (backend) y 8 h (FHIR) | ✅ Implementado |
 | **T**ampering (Manipulación) | Modificación del payload del JWT para escalar privilegios | Header `Authorization` | Firma HMAC-SHA-256: cualquier alteración invalida la firma → rechazo 401/403 | ✅ Implementado |
-| **T**ampering | Modificación de recursos FHIR en tránsito | Endpoints `PUT/POST /fhir/*` | HTTPS obligatorio en producción (Render + Vercel proveen TLS 1.2+) | ✅ Delegado a infraestructura |
-| **R**epudiation (Repudio) | Un médico niega haber accedido o modificado un registro | Todas las operaciones con datos clínicos | Logs operacionales básicos en FHIR server (SLF4J); **no existe audit trail formal** | ⚠️ Gap — ver sección 5 |
+| **T**ampering | Modificación de recursos FHIR en tránsito | Endpoints `PUT/POST /fhir/*` | HTTPS obligatorio en producción (Railway + Vercel proveen TLS 1.2+) | ✅ Delegado a infraestructura |
+| **R**epudiation (Repudio) | Un médico niega haber accedido o modificado un registro | Todas las operaciones con datos clínicos | TF_Back: eventos en tabla `audit_log`; fhir_server: eventos estructurados en log (`FhirAuditInterceptor` + `AuditLogService`). Persistencia centralizada de eventos FHIR en BD pendiente | ⚠️ Gap — ver sección 5 |
 | **I**nformation Disclosure | Exposición de datos clínicos sin autenticación | Rutas FHIR y API | Middleware `validateToken` en todas las rutas `/api`; `FhirAuthInterceptor` en todas las rutas `/fhir/*` excepto `/fhir/metadata` | ✅ Implementado |
 | **I**nformation Disclosure | Acceso a archivos médicos mediante URL directa | AWS S3 | Pre-signed URLs con expiración de **10 minutos**; sin URL directa permanente | ✅ Implementado |
 | **I**nformation Disclosure | Filtrado de tecnología usada (`X-Powered-By`) | Headers HTTP | `app.disable('x-powered-by')` en Express | ✅ Implementado |
@@ -134,9 +136,10 @@ El cifrado en tránsito se delega a la capa de infraestructura:
 | Tramo | Proveedor | TLS | Versión mínima |
 |---|---|---|---|
 | Usuario → Frontend | Vercel Edge Network | Sí | TLS 1.2 |
-| Usuario → TF_Back | Render (HTTPS automático) | Sí | TLS 1.2 |
-| Usuario → fhir_server | Render (HTTPS automático) | Sí | TLS 1.2 |
-| TF_Back → PostgreSQL | Render Managed DB | SSL habilitado | — |
+| Usuario → TF_Back | Railway (HTTPS automático) | Sí | TLS 1.2 |
+| Usuario → fhir_server | Railway (HTTPS automático) | Sí | TLS 1.2 |
+| TF_Back → fhir_server | Railway (comunicación interna) | Sí | TLS 1.2 |
+| TF_Back → PostgreSQL | Railway (comunicación interna) | SSL habilitado | — |
 | TF_Back → AWS S3 | AWS SDK (HTTPS) | Sí | TLS 1.2 |
 
 **Observación sobre SSL de base de datos:** la conexión a PostgreSQL cuando se usa `DATABASE_URL` tiene `rejectUnauthorized: false`:
@@ -146,14 +149,14 @@ El cifrado en tránsito se delega a la capa de infraestructura:
 ssl: { rejectUnauthorized: false }
 ```
 
-Esto permite certificados auto-firmados del servidor de base de datos. En Render Managed DB, los certificados son válidos pero la validación está deshabilitada. **Esta configuración es aceptable en un entorno académico/MVP** pero en producción formal debería activarse la verificación del certificado o usar el CA bundle provisto por el proveedor.
+Esto permite certificados auto-firmados del servidor de base de datos. En Railway, los certificados son válidos pero la validación está deshabilitada. **Esta configuración es aceptable en un entorno académico/MVP** pero en producción formal debería activarse la verificación del certificado o usar el CA bundle provisto por el proveedor.
 
 ### 2.4 Cifrado en reposo
 
 | Almacenamiento | Mecanismo | Responsable |
 |---|---|---|
 | Archivos médicos (S3) | SSE-S3 (AES-256, activado por defecto en todos los buckets desde enero 2023) | AWS |
-| Base de datos PostgreSQL | Encryption at rest según política del proveedor (Render Managed DB) | Render |
+| Base de datos PostgreSQL | Encryption at rest según política del proveedor (Railway) | Railway |
 
 Los archivos médicos nunca se exponen con URL directa permanente. Se generan pre-signed URLs temporales de 10 minutos:
 
@@ -174,7 +177,7 @@ Todos los secretos se gestionan como variables de entorno. Ningún secret se com
 | AWS credentials | TF_Back | `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` | — |
 | DB password | TF_Back | `DB_PASSWORD` / `DATABASE_URL` | — |
 
-**Limitación:** no se usa un sistema de gestión de secretos centralizado (KMS, HashiCorp Vault, AWS Secrets Manager). Los secretos se configuran directamente en el panel de variables de entorno del proveedor de hosting (Render). Para un sistema en producción con datos reales, se debería implementar rotación de secretos y auditoría de acceso a los mismos.
+**Limitación:** no se usa un sistema de gestión de secretos centralizado (KMS, HashiCorp Vault, AWS Secrets Manager). Los secretos se configuran directamente en el panel de variables de entorno del proveedor de hosting (Railway). Para un sistema en producción con datos reales, se debería implementar rotación de secretos y auditoría de acceso a los mismos.
 
 ### 2.6 Control de Acceso (CORS)
 
@@ -271,17 +274,18 @@ Decodificar en [jwt.io](https://jwt.io) un token generado para mostrar los claim
 }
 ```
 
-### 3.2 Logs operacionales existentes
+### 3.2 Logs operacionales y eventos de auditoría
 
-El `fhir_server` registra todas las operaciones sobre recursos FHIR a nivel `INFO` en producción. Ejemplo de salida esperada:
+El `fhir_server` registra todas las operaciones sobre recursos FHIR a nivel `INFO` en producción. Además, el interceptor `FhirAuditInterceptor` y el servicio `AuditLogService` generan eventos de auditoría estructurados (user_email, service, http_method, path, ip_address, resource_type, patient_hash_id, action) que se escriben en log con el prefijo `FHIR_AUDIT_EVENT`. Esos eventos no se persisten aún en una base de datos; la persistencia en tabla `audit_log` o el envío a TF_Back es trabajo pendiente (Gap 1).
+
+Ejemplo de logs operacionales:
 
 ```
 INFO  PatientResourceProvider - Buscando paciente con hashId: a3f9c2...
 INFO  ReportResourceProvider  - Creando reporte para paciente: a3f9c2...
+INFO  ... - FHIR_AUDIT_EVENT {user_email=medico@hospital.com, service=fhir_server, http_method=GET, path=/fhir/Patient/..., ...}
 WARN  PatientResourceProvider - Paciente no encontrado para hashId: b8d1e4...
 ```
-
-Estos logs son operacionales, no constituyen un audit trail formal (ver sección 5).
 
 ---
 
@@ -300,10 +304,10 @@ Estos logs son operacionales, no constituyen un audit trail formal (ver sección
 | Requisito legal | Implementación actual | Estado |
 |---|---|---|
 | Acceso solo a personal autorizado | Google OAuth + JWT + lista blanca de usuarios en DB | ✅ |
-| Confidencialidad de datos en tránsito | TLS 1.2+ en todos los tramos (Vercel + Render) | ✅ |
+| Confidencialidad de datos en tránsito | TLS 1.2+ en todos los tramos (Vercel + Railway) | ✅ |
 | Identificadores no expuestos | `hash_id` derivado del DNI (SHA-256 + salt) | ✅ |
 | Integridad de datos | Firma JWT evita manipulación; S3 con SSE garantiza integridad en reposo | ✅ |
-| Registro de accesos (auditoría) | Audit trail básico en TF_Back (tabla `audit_log`); pendiente extenderlo a fhir_server | ⚠️ Gap (parcial) |
+| Registro de accesos (auditoría) | TF_Back: tabla `audit_log`. fhir_server: eventos estructurados en log (`FhirAuditInterceptor` + `AuditLogService`); pendiente persistencia en BD o envío a TF_Back | ⚠️ Gap (parcial) |
 | Derecho de acceso del paciente a sus datos | No aplicable (sistema interno para profesionales, no para pacientes) | — |
 | Derecho al olvido / eliminación | No implementado | ⚠️ Gap / fuera de scope MVP |
 
@@ -313,7 +317,7 @@ Este sistema es un **prototipo académico (MVP)**. No está en producción con p
 - Registro ante la **DNPDP** (Dirección Nacional de Protección de Datos Personales)
 - Análisis de Impacto de Privacidad (DPIA) para tratamiento de datos sensibles de salud
 - Implementación de audit trail completo
-- Contrato de encargado de tratamiento con proveedores cloud (AWS, Render)
+- Contrato de encargado de tratamiento con proveedores cloud (AWS, Railway)
 
 ---
 
@@ -382,7 +386,6 @@ app.use((req, res, next) => {
       req.dni_paciente ||
       null,
     action,
-    request_id: null,
     metadata,
   });
 
@@ -392,12 +395,12 @@ app.use((req, res, next) => {
 
 De este modo se registra quién accede a rutas de negocio sin incluir el contenido completo de los cuerpos (solo las claves), reduciendo el riesgo de exponer datos clínicos en los logs.
 
-**Implementación en fhir_server (pendiente):** Actualmente existe el interceptor `FhirAuthInterceptor`, registrado en `WebConfig`, que valida la presencia y validez del JWT en todas las rutas `/fhir/**` (excluyendo `/fhir/metadata`) y retorna `401` cuando el token falta o es inválido. Sin embargo, este interceptor no construye ni persiste eventos de auditoría estructurados (solo cumple función de autenticación/autorización).
+**Implementación en fhir_server:** Existe el interceptor `FhirAuthInterceptor` (registrado en `WebConfig`) que valida la presencia y validez del JWT en todas las rutas `/fhir/**` (excluyendo `/fhir/metadata`) y retorna `401` cuando el token falta o es inválido. Además, el interceptor `FhirAuditInterceptor` y el servicio `AuditLogService` construyen eventos de auditoría estructurados (user_email, method, path, ip, resource_type, action) y los registran en log mediante `logger.info("FHIR_AUDIT_EVENT {}", event)`. El `AuditLogService` no persiste en base de datos (por diseño actual del servicio, que solo escribe en SLF4J). **Trabajo pendiente:** persistir esos eventos en una tabla `audit_log` (en fhir_server o en TF_Back) o exportarlos hacia TF_Back para unificar el audit trail.
 
 En resumen:
 
-- En `TF_Back` ya se registran eventos estructurados en la tabla `audit_log` (usuario, rol, IP, método, path, metadata de la request).
-- En `fhir_server` aún no hay un audit trail equivalente; sería trabajo futuro reutilizar el mismo esquema de `audit_log` o exportar eventos hacia `TF_Back`.
+- En `TF_Back` se registran eventos estructurados en la tabla `audit_log` (usuario, rol, IP, método, path, metadata de la request).
+- En `fhir_server` el `FhirAuditInterceptor` y `AuditLogService` generan y registran eventos estructurados en log (`FHIR_AUDIT_EVENT`); la persistencia en tabla o envío a TF_Back sigue pendiente.
 
 ### Gap 2 — RBAC no aplicado en controllers — **MITIGADO**
 
@@ -493,7 +496,7 @@ Con esto, las sesiones pueden renovarse de forma transparente mientras el refres
 | Pre-signed URLs temporales para archivos | ✅ Implementado (10 min) | Sección 2.4 |
 | Expiración de tokens y cuentas | ✅ Implementado | Sección 2.2 |
 | RBAC aplicado en controllers | ✅ Implementado | Middleware `requireRole`; rutas user, patient (activate/delete), abm (cargar-provincias/ciudades) — Gap 2 |
-| Audit trail estructurado | ⚠️ Parcial (TF_Back con tabla `audit_log`; fhir_server solo logs operacionales) | Gap 1 — middleware en TF_Back; pendiente interceptor equivalente en fhir_server |
+| Audit trail estructurado | ⚠️ Parcial (TF_Back: tabla `audit_log`; fhir_server: `FhirAuditInterceptor` + `AuditLogService` registran eventos en log; pendiente persistencia centralizada) | Gap 1 — middleware en TF_Back; interceptor y servicio en fhir_server; falta persistir eventos FHIR en BD o enviar a TF_Back |
 | Rate limiting en auth | ✅ Implementado | Gap 3 — mitigado en `TF_Back/index.js` |
 | Security headers (helmet) | ✅ Implementado | Gap 4 — mitigado en `TF_Back/index.js` |
 | Refresh tokens | ✅ Implementado (access/refresh con rotación y cookie `HttpOnly`) | Sección 2.2 y Gap 6 |

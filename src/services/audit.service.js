@@ -7,7 +7,7 @@ import { pool } from '../configs/config.js';
  * Se asume una tabla con columnas al menos:
  * (user_id, user_email, user_role, ip_address, user_agent,
  *  service, http_method, path, status_code,
- *  resource_type, patient_hash_id, action, request_id, metadata).
+ *  resource_type, patient_hash_id, action, metadata).
  */
 export const insertAuditEvent = async (event) => {
   const {
@@ -23,7 +23,6 @@ export const insertAuditEvent = async (event) => {
     resource_type,
     patient_hash_id,
     action,
-    request_id,
     metadata,
   } = event;
 
@@ -41,13 +40,12 @@ export const insertAuditEvent = async (event) => {
       resource_type,
       patient_hash_id,
       action,
-      request_id,
       metadata
     )
     VALUES (
       $1, $2, $3, $4, $5,
       $6, $7, $8, $9, $10,
-      $11, $12, $13, $14::jsonb
+      $11, $12, $13::jsonb
     )
   `;
 
@@ -64,7 +62,6 @@ export const insertAuditEvent = async (event) => {
     resource_type ?? null,
     patient_hash_id ?? null,
     action ?? null,
-    request_id ?? null,
     metadata ? JSON.stringify(metadata) : null,
   ];
 
