@@ -18,7 +18,7 @@ const cleanFileName = (fileName) => fileName.replace('.routes.js', '');
 
 // Si el nombre del archivo es distinto a index se agrega al router
 readdirSync(PATH_ROUTER).filter((fileName) => {
-   if (fileName !== 'index.routes.js') {
+   if (fileName !== 'index.routes.js' && fileName !== 'internal.routes.js') {
       const cleanName = cleanFileName(fileName);
       import(`./${cleanName}.routes.js`)
          .then((moduleRouter) => {

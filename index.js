@@ -7,6 +7,7 @@ import { errorHandler } from './src/middlewares/errors.middleware.js';
 import { PORT, ALLOWED_CORS, pool } from './src/configs/config.js';
 import { validateToken } from './src/utils/token.js';
 import { router as apiRouter } from './src/routes/index.routes.js';
+import { router as internalRouter } from './src/routes/internal.routes.js';
 import { router as authRouter } from './src/routes/auth.routes.js';
 import { RateLimitPostgresStore } from './src/stores/rateLimit.store.js';
 import swaggerUi from 'swagger-ui-express';
@@ -57,6 +58,7 @@ app.get('/health', (req, res) => {
   res.status(200).json({ ok: true });
 });
 
+app.use('/api/internal', internalRouter);
 app.use(validateToken);
 app.use((req, res, next) => {
   const path = req.path || req.originalUrl || '';
