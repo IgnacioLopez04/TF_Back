@@ -46,7 +46,6 @@ router.post('/audit', (req, res) => {
     action: body.action ?? null,
     metadata: body.metadata ?? null,
   };
-  console.log(event);
 
   void insertAuditEvent(event);
   return res.status(204).send();
