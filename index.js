@@ -7,12 +7,17 @@ import { errorHandler } from './src/middlewares/errors.middleware.js';
 import { PORT, ALLOWED_CORS, pool } from './src/configs/config.js';
 import { validateToken } from './src/utils/token.js';
 import { router as apiRouter } from './src/routes/index.routes.js';
+import { router as internalRouter } from './src/routes/internal.routes.js';
 import { router as authRouter } from './src/routes/auth.routes.js';
 import { RateLimitPostgresStore } from './src/stores/rateLimit.store.js';
 import swaggerUi from 'swagger-ui-express';
 import YAML from 'yamljs';
 import { NotFoundError } from './src/errors/errors.js';
 import { insertAuditEvent } from './src/services/audit.service.js';
+import {
+  getResourceTypeFromPath,
+  getPatientHashIdFromRequest,
+} from './src/utils/auditHelpers.js';
 
 const swaggerDocument = YAML.load('./docs/swagger.yaml');
 const app = express();
@@ -53,6 +58,7 @@ app.get('/health', (req, res) => {
   res.status(200).json({ ok: true });
 });
 
+app.use('/api/internal', internalRouter);
 app.use(validateToken);
 app.use((req, res, next) => {
   const path = req.path || req.originalUrl || '';
@@ -91,7 +97,7 @@ app.use((req, res, next) => {
         : [],
   };
 
-  void insertAuditEvent({
+  res.locals.auditEvent = {
     user_id: user.id_usuario ?? null,
     user_email: user.email ?? 'anonymous',
     user_role: user.id_tipo_usuario ?? null,
@@ -102,13 +108,18 @@ app.use((req, res, next) => {
     path,
     status_code: null,
     resource_type: null,
-    patient_hash_id:
-      req.hash_id ||
-      req.dni_paciente ||
-      null,
+    patient_hash_id: null,
     action,
-    request_id: null,
     metadata,
+  };
+
+  res.once('finish', () => {
+    const event = res.locals.auditEvent;
+    if (!event) return;
+    event.status_code = res.statusCode;
+    event.resource_type = getResourceTypeFromPath(event.path);
+    event.patient_hash_id = getPatientHashIdFromRequest(req);
+    void insertAuditEvent(event);
   });
 
   next();
