@@ -68,6 +68,12 @@ export class PatientController {
   static async postPatient(req, res, next) {
     try {
       const data = req.body;
+      console.log('[CREATE PATIENT] Controller received validated data:', {
+        dni_paciente: data.dni_paciente,
+        nombre_paciente: data.nombre_paciente,
+        apellido_paciente: data.apellido_paciente,
+        hasTutores: Array.isArray(data.tutores) && data.tutores.length > 0,
+      });
       const result = await PatientModel.insertPatient({
         ...data,
         id_ciudad: data.id_ciudad || null,
@@ -89,6 +95,10 @@ export class PatientController {
         numero_afiliado !== '' &&
         String(numero_afiliado).length > 25
       ) {
+        console.warn(
+          '[CREATE PATIENT] Número de afiliado demasiado largo:',
+          numero_afiliado,
+        );
         return next(
           new BadRequestError(
             'El número de afiliado no puede superar los 25 caracteres',
